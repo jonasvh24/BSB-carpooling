@@ -86,7 +86,7 @@ export default async function PoolPage({ params, searchParams }: { params: Promi
                   <input type="hidden" name="userId" value={m.userId} />
                   {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                     <label key={d} className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs">
-                      <input type="checkbox" name="days" value={d} defaultChecked={parseDays(m.days).includes(d)} disabled={!iAmDriver && m.userId !== user.id} className="accent-accent" />
+                      <input type="checkbox" name="days" value={d} defaultChecked={parseDays(m.days).includes(d)} disabled={!iAmDriver && m.userId !== user.id} className="accent-navy" />
                       {t.weekdays.short[d]}
                     </label>
                   ))}

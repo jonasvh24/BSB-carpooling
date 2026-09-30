@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       <AppNav isAdmin={user.role === "ADMIN"} unread={unread} current={path} />
-      <main id="main" className="mx-auto max-w-3xl px-4 py-4 pb-24">
+      <main id="main" className="mx-auto max-w-3xl px-4 pb-28 pt-6 md:pb-16">
         {children}
       </main>
     </>

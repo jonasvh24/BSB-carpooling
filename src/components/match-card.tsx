@@ -11,11 +11,14 @@ export function MatchCard({ match: m }: { match: MatchView }) {
   return (
     <Card as="li">
       <div className="flex items-start gap-3">
-        <Avatar name={m.other.name} photoUrl={m.other.photoUrl} />
+        <Avatar name={m.other.name} photoUrl={m.other.photoUrl} size={52} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="truncate text-lg font-medium">{m.other.name}</h2>
-            <span className="shrink-0 rounded-md bg-surface-2 px-2 py-0.5 text-sm" aria-label={`${t.matches.score} ${m.score}`}>
+            <h2 className="truncate text-lg font-bold">{m.other.name}</h2>
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold text-base font-bold text-[#3c3011] ring-4 ring-gold-soft"
+              aria-label={`${t.matches.score} ${m.score}`}
+            >
               {m.score}
             </span>
           </div>
@@ -37,7 +40,7 @@ export function MatchCard({ match: m }: { match: MatchView }) {
       {m.other.notes && <p className="mt-3 text-sm italic">“{m.other.notes}”</p>}
 
       <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-accent">{t.matches.perDay}</summary>
+        <summary className="cursor-pointer text-navy dark:text-gold">{t.matches.perDay}</summary>
         <table className="mt-2 w-full text-left">
           <thead className="text-muted">
             <tr>
@@ -78,7 +81,7 @@ export function MatchCard({ match: m }: { match: MatchView }) {
         )}
         <form action={dismissMatch}>
           <input type="hidden" name="id" value={m.id} />
-          <button type="submit" className="min-h-11 rounded-lg px-3 text-sm text-muted hover:bg-surface-2">
+          <button type="submit" className="min-h-11 rounded-full px-4 text-sm font-semibold text-muted hover:bg-surface-2">
             {t.matches.dismiss}
           </button>
         </form>

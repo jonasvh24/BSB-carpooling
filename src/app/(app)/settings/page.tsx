@@ -19,7 +19,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <p className="text-sm text-muted">{user.email}</p>
         <form action={setMuteAction} className="mt-3">
           <label className="flex items-start gap-2">
-            <input type="checkbox" name="muteEmail" defaultChecked={user.muteEmail} className="mt-1 h-4 w-4 accent-accent" />
+            <input type="checkbox" name="muteEmail" defaultChecked={user.muteEmail} className="mt-1 h-4 w-4 accent-navy" />
             <span>
               <span className="block">{t.settings.muteEmail}</span>
               <span className="block text-sm text-muted">{t.settings.muteEmailHelp}</span>

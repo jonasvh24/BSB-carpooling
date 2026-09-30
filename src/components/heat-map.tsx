@@ -21,7 +21,7 @@ export default function HeatMap({ cells, site }: { cells: HeatCell[]; site: { la
               [c.lat, c.lng],
               [c.lat + c.dLat, c.lng + c.dLng],
             ]}
-            pathOptions={{ color: c.coarse ? "#1a5fb4" : "#0b6e63", weight: 1, fillOpacity: 0.15 + 0.6 * (c.count / max) }}
+            pathOptions={{ color: c.coarse ? "#292f4c" : "#c11f1b", weight: 1, fillOpacity: 0.15 + 0.6 * (c.count / max) }}
           >
             <Tooltip>{`${c.count} staff${c.coarse ? " (3 km cell)" : ""}`}</Tooltip>
           </Rectangle>

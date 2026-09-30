@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { t } from "@/i18n";
 import { PwaSetup } from "@/components/pwa-setup";
+
+// Open Sans is the typeface of the school website.
+const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-open-sans", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: t.app.name, template: `%s · ${t.app.name}` },
@@ -12,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b6e63",
+  themeColor: "#292f4c",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -20,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB">
+    <html lang="en-GB" className={openSans.variable}>
       <body className="min-h-dvh">
         <a href="#main" className="skip-link">
           {t.app.skipToContent}

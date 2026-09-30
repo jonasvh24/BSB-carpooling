@@ -26,7 +26,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
     <>
       <PageTitle>{t.requests.title}</PageTitle>
       {error && <Alert kind="error">{fmt(t.requests.infeasible, { reason: error })}</Alert>}
-      <h2 className="mb-2 text-lg font-medium">{t.requests.incoming}</h2>
+      <h2 className="mb-2 text-lg font-bold">{t.requests.incoming}</h2>
       {incoming.length === 0 ? (
         <p className="mb-6 text-muted">{t.requests.none}</p>
       ) : (
@@ -74,7 +74,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
           ))}
         </ul>
       )}
-      <h2 className="mb-2 text-lg font-medium">{t.requests.outgoing}</h2>
+      <h2 className="mb-2 text-lg font-bold">{t.requests.outgoing}</h2>
       {outgoing.length === 0 ? (
         <p className="text-muted">{t.requests.none}</p>
       ) : (

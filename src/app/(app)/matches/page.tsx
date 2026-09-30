@@ -26,13 +26,13 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
         <ColdStart userId={user.id} inviteUrl={inviteUrl} />
       ) : (
         <>
-          <nav aria-label={t.matches.title} className="mb-4 flex gap-1">
+          <nav aria-label={t.matches.title} className="mb-5 inline-flex gap-1 rounded-full border border-border bg-surface p-1 shadow-card">
             {(["AM", "PM"] as const).map((d) => (
               <a
                 key={d}
                 href={`/matches?dir=${d}`}
                 aria-current={tab === d ? "page" : undefined}
-                className="rounded-md border border-border px-3 py-2 text-sm aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium"
+                className="rounded-full px-4 py-2 text-sm font-semibold text-muted aria-[current=page]:bg-navy aria-[current=page]:text-on-navy"
               >
                 {d === "AM" ? t.matches.tabAm : t.matches.tabPm} ({d === "AM" ? am.length : pm.length})
               </a>
@@ -41,7 +41,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           {shown.length === 0 ? (
             <p className="text-muted">{t.matches.none}</p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {shown.map((m) => (
                 <MatchCard key={m.id} match={m} />
               ))}

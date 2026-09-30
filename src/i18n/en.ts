@@ -34,6 +34,22 @@ export const en = {
     installDismiss: "Not now",
     offline: "You appear to be offline. Some pages may not load.",
   },
+  brand: {
+    school: "The British School of Brussels",
+  },
+  home: {
+    eyebrow: "Staff carpooling",
+    headline: "Share the drive to school",
+    lead: "Find colleagues who live on your route and keep your hours. Fewer cars on the Tervuren run, lower fuel bills, better company.",
+    cta: "Sign in with your school email",
+    staffOnly: "For BSB staff only. It takes about five minutes to set up.",
+    steps: [
+      { title: "Tell us your commute", body: "Where you live, the days you are in and the hours you keep." },
+      { title: "See who matches", body: "Colleagues on your route, with the detour and pickup time worked out for you." },
+      { title: "Ride together", body: "Form a carpool, confirm each trip with one tap and share the cost fairly." },
+    ],
+    privacyNote: "Colleagues only ever see roughly where you live until you are in a carpool together.",
+  },
   nav: {
     home: "Home",
     matches: "Matches",

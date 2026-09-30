@@ -42,7 +42,7 @@ export default async function PoolsPage() {
             <Card as="li" key={pool.id}>
               <a href={`/pools/${pool.id}`} className="block">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-lg font-medium">{pool.name}</h2>
+                  <h2 className="text-lg font-bold">{pool.name}</h2>
                   <Badge tone={pool.status === "ACTIVE" ? "ok" : "warn"}>{t.pools.status[pool.status as keyof typeof t.pools.status]}</Badge>
                 </div>
                 <p className="text-sm text-muted">
@@ -55,7 +55,7 @@ export default async function PoolsPage() {
         </ul>
       )}
 
-      <h2 className="mt-8 mb-2 text-lg font-medium">{t.pools.trips}</h2>
+      <h2 className="mt-8 mb-2 text-lg font-bold">{t.pools.trips}</h2>
       {trips.length === 0 ? (
         <p className="text-muted">{t.trips.noTrips}</p>
       ) : (

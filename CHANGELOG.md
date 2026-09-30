@@ -60,3 +60,11 @@
 - Seed script importable; seed/purge test. Production build verified: service worker registers, manifest is standalone with 192/512 icons (installability criteria), all dev routes 404 in pilot mode.
 - All admin and settings strings moved into `src/i18n/en.ts`. No `any` in the codebase.
 - Clean-clone check: `npm run setup && npm run dev` from a fresh `git clone` works; scheduler starts for the seeded organisation.
+
+## BSB branding and visual refresh (2026-09-30)
+
+- School palette, Open Sans and the BSB logo throughout; navy header, bottom tab bar on phones, new landing and sign-in pages, restyled cards, chips, buttons, match scores and avatars; dark mode kept.
+- PWA icons, theme colour, map colours and the email button follow the palette.
+- Local demo organisation renamed to The British School of Brussels, Tervuren campus (`.env` only; `.env.example` stays generic).
+- ESLint ignores `.next-pilot/`; Playwright assertions allow for first-visit compiles.
+

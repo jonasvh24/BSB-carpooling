@@ -22,9 +22,9 @@ export default function PoolMap({ stops, line, ariaLabel }: { stops: MapStop[]; 
     <div className="h-72 w-full overflow-hidden rounded-xl border border-border" role="img" aria-label={ariaLabel}>
       <MapContainer bounds={bounds.pad(0.2)} scrollWheelZoom={false} className="h-full w-full">
         <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#0b6e63", weight: 4 }} />}
+        {line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#292f4c", weight: 4 }} />}
         {stops.map((s, i) => (
-          <Marker key={i} position={[s.lat, s.lng]} icon={icon(s.kind === "site" ? "#b3261e" : s.kind === "driver" ? "#0b6e63" : "#1a5fb4")}>
+          <Marker key={i} position={[s.lat, s.lng]} icon={icon(s.kind === "site" ? "#c11f1b" : s.kind === "driver" ? "#292f4c" : "#d0a63b")}>
             <Tooltip permanent direction="top" offset={[0, -8]}>
               {s.label}
             </Tooltip>

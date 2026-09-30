@@ -15,7 +15,7 @@ export default async function DevIndex() {
       <p className="mt-4">
         <a className="underline" href="/dev/mailbox">Mailbox</a>
       </p>
-      <h2 className="mt-6 text-lg font-medium">Sign in as</h2>
+      <h2 className="mt-6 text-lg font-bold">Sign in as</h2>
       <ul className="mt-2 divide-y divide-border">
         {users.map((u) => (
           <li key={u.id} className="flex items-center justify-between py-2 text-sm">

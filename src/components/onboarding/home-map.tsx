@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 
 const pin = L.divIcon({
   className: "",
-  html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#0b6e63;border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>',
+  html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#c11f1b;border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>',
   iconSize: [22, 22],
   iconAnchor: [11, 22],
 });

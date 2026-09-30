@@ -1,20 +1,31 @@
 @import "tailwindcss";
 
-/* Palette chosen for ≥ 4.5:1 text contrast on both backgrounds. */
+/* British School of Brussels palette: navy #292f4c, red #c11f1b, gold #f0c65b,
+   taken from britishschool.be. Text pairs keep ≥ 4.5:1 contrast. */
 :root {
-  --bg: #f7f7f5;
+  --bg: #f3f4f8;
   --surface: #ffffff;
-  --surface-2: #eeeeea;
-  --text: #1b1f23;
-  --muted: #5a6470;
-  --border: #d5d9de;
-  --accent: #0b6e63;
-  --accent-strong: #094f47;
+  --surface-2: #eceef5;
+  --text: #292f4c;
+  --muted: #5b6180;
+  --border: #dcdfea;
+  --accent: #c11f1b;
+  --accent-strong: #9c1815;
   --accent-text: #ffffff;
-  --danger: #b3261e;
-  --warn: #8a5a00;
-  --ok: #1f6f3f;
+  --accent-soft: #fbe9e8;
+  --navy: #292f4c;
+  --navy-2: #343955;
+  --on-navy: #ffffff;
+  --on-navy-muted: #c3c7dc;
+  --gold: #f0c65b;
+  --gold-soft: #fbefd0;
+  --on-gold: #3c3011;
+  --danger: #b41d22;
+  --warn: #775f22;
+  --ok: #26613e;
+  --ok-soft: #e3f3ea;
   --focus: #1a5fb4;
+  --shadow: 0 1px 2px rgb(41 47 76 / 0.06), 0 6px 20px -8px rgb(41 47 76 / 0.18);
 }
 
 @theme inline {
@@ -27,27 +38,48 @@
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+  --color-on-navy: var(--on-navy);
+  --color-on-navy-muted: var(--on-navy-muted);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-on-gold: var(--on-gold);
   --color-danger: var(--danger);
   --color-warn: var(--warn);
   --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
   --color-focus: var(--focus);
+  --shadow-card: var(--shadow);
+  --font-sans: var(--font-open-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121416;
-    --surface: #1b1e21;
-    --surface-2: #24282c;
-    --text: #eceff1;
-    --muted: #a5adb5;
-    --border: #3a4046;
-    --accent: #5fc8b8;
-    --accent-strong: #8adfd2;
-    --accent-text: #0b1f1c;
+    --bg: #14172a;
+    --surface: #1e2238;
+    --surface-2: #2a2f4a;
+    --text: #eef0f7;
+    --muted: #aab0c8;
+    --border: #3a4060;
+    --accent: #ff7a76;
+    --accent-strong: #ff9b97;
+    --accent-text: #1b0706;
+    --accent-soft: #3a2230;
+    --navy: #3a4270;
+    --navy-2: #2a2f4a;
+    --on-navy: #ffffff;
+    --on-navy-muted: #b9bed6;
+    --gold: #f0c65b;
+    --gold-soft: #3c3520;
+    --on-gold: #f7dfa1;
     --danger: #ff8a80;
-    --warn: #ffcc66;
+    --warn: #f0c65b;
     --ok: #7ed49a;
+    --ok-soft: #1d3327;
     --focus: #8ab4f8;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -10px rgb(0 0 0 / 0.5);
   }
 }
 
@@ -58,14 +90,26 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
 }
 
 /* Visible focus for keyboard users, everywhere. */
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--navy);
 }
 
 .skip-link {
@@ -82,10 +126,43 @@ body {
   top: 0.5rem;
 }
 
+/* Wizard progress bar in the school red on a soft track. */
+progress {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+progress::-webkit-progress-bar {
+  background: var(--surface-2);
+}
+progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 999px;
+}
+progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+summary {
+  font-weight: 600;
+}
+
+/* The swoosh from the school logo, used as a quiet backdrop on navy panels. */
+.hero-navy {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgb(193 31 27 / 0.35), transparent 55%),
+    linear-gradient(160deg, var(--navy) 0%, #1f2440 100%);
+  color: var(--on-navy);
+}
+
 /* Leaflet needs its CSS; the marker icons are set in code. */
 .leaflet-container {
   height: 100%;
   width: 100%;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   z-index: 0;
 }

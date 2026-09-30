@@ -23,6 +23,8 @@ export default defineConfig({
   testDir: "e2e",
   globalSetup: "./e2e/global-setup.ts",
   timeout: 60_000,
+  // The first visit to a route compiles it in dev; 5 s is too tight on a cold cache.
+  expect: { timeout: 20_000 },
   fullyParallel: false,
   workers: 1,
   retries: 0,

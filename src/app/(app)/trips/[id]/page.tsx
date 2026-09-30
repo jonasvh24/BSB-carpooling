@@ -147,7 +147,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
                 .filter((p) => p.userId !== trip.driverId && p.userId)
                 .map((p) => (
                   <label key={p.id} className="mr-3 inline-flex items-center gap-1">
-                    <input type="checkbox" name="noShow" value={p.userId!} className="h-4 w-4 accent-accent" /> {p.user?.name}
+                    <input type="checkbox" name="noShow" value={p.userId!} className="h-4 w-4 accent-navy" /> {p.user?.name}
                   </label>
                 ))}
             </fieldset>

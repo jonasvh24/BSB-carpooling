@@ -43,7 +43,7 @@ export default async function AdminSurveys({ searchParams }: { searchParams: Pro
           </form>
         </Card>
       </div>
-      <h2 className="mt-6 mb-2 text-lg font-medium">{t.admin.ui.freeText}</h2>
+      <h2 className="mt-6 mb-2 text-lg font-bold">{t.admin.ui.freeText}</h2>
       <ul className="space-y-2 text-sm">
         {responses.map((r) => {
           const a = JSON.parse(r.answers) as Record<string, string | number>;

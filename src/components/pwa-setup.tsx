@@ -39,7 +39,7 @@ export function PwaSetup() {
 
   if (!show || !prompt) return null;
   return (
-    <div role="region" aria-label="Install" className="fixed inset-x-0 bottom-0 border-t border-border bg-surface p-3 shadow-lg">
+    <div role="region" aria-label="Install" className="fixed inset-x-0 bottom-14 z-40 border-t border-border bg-surface p-3 shadow-lg md:bottom-0">
       <div className="mx-auto flex max-w-lg items-center gap-3">
         <p className="flex-1 text-sm">{t.app.installBanner}</p>
         <Button

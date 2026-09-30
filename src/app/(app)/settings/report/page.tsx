@@ -60,7 +60,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
             <Textarea id="details" name="details" rows={3} maxLength={1000} />
           </Field>
           <label className="mb-3 flex items-center gap-2 text-sm">
-            <input type="checkbox" name="block" className="h-4 w-4 accent-accent" /> {t.settings.block}
+            <input type="checkbox" name="block" className="h-4 w-4 accent-navy" /> {t.settings.block}
           </label>
           <Button type="submit">{t.app.send}</Button>
         </form>

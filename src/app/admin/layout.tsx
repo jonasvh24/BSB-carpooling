@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { t } from "@/i18n";
 import { requireAdmin } from "@/lib/session";
+import { BrandLockup } from "@/components/brand";
 
 const items = [
   ["/admin", t.admin.dashboard],
@@ -20,24 +21,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const path = (await headers()).get("x-pathname") ?? "";
   return (
     <>
-      <nav aria-label={t.admin.title} className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-5xl items-center gap-1 overflow-x-auto px-2 py-1 text-sm">
-          <Link href="/matches" className="px-2 py-2 font-semibold">
-            {t.app.name}
+      <nav aria-label={t.admin.title} className="sticky top-0 z-30 bg-navy text-on-navy-muted shadow-md">
+        <div className="mx-auto flex h-14 max-w-5xl items-center gap-1 overflow-x-auto px-4 text-sm">
+          <Link href="/matches" className="mr-3 shrink-0 rounded-md">
+            <BrandLockup />
           </Link>
           {items.map(([href, label]) => (
             <a
               key={href}
               href={href}
               aria-current={path === href ? "page" : undefined}
-              className="whitespace-nowrap rounded-md px-2 py-2 hover:bg-surface-2 aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium"
+              className="whitespace-nowrap rounded-full px-3 py-2 font-semibold hover:bg-white/10 hover:text-on-navy aria-[current=page]:bg-white/15 aria-[current=page]:text-on-navy"
             >
               {label}
             </a>
           ))}
         </div>
       </nav>
-      <main id="main" className="mx-auto max-w-5xl px-4 py-4 pb-16">
+      <main id="main" className="mx-auto max-w-5xl px-4 pb-16 pt-6">
         {children}
       </main>
     </>

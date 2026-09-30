@@ -12,7 +12,7 @@ export function RequestForm({ matchId, sharedDays, label }: { matchId: string; s
   if (state?.ok) return <span className="text-sm text-ok">{t.matches.requestSent}</span>;
   if (!open) return <Button onClick={() => setOpen(true)}>{label}</Button>;
   return (
-    <form action={action} className="w-full rounded-lg border border-border bg-surface-2 p-3">
+    <form action={action} className="w-full rounded-2xl border border-border bg-surface-2 p-4">
       <h3 className="font-medium mb-2">{t.matches.requestTitle}</h3>
       {state?.error && <Alert kind="error">{state.error}</Alert>}
       <input type="hidden" name="matchId" value={matchId} />
@@ -21,7 +21,7 @@ export function RequestForm({ matchId, sharedDays, label }: { matchId: string; s
         <div className="flex flex-wrap gap-2">
           {sharedDays.map((d) => (
             <label key={d} className="flex min-h-11 items-center gap-1 rounded-lg border border-border bg-surface px-3">
-              <input type="checkbox" name="days" value={d} defaultChecked className="h-4 w-4 accent-accent" />
+              <input type="checkbox" name="days" value={d} defaultChecked className="h-4 w-4 accent-navy" />
               {t.weekdays.short[d]}
             </label>
           ))}

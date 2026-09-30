@@ -61,7 +61,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       {sp.recomputed && <Alert kind="success">{fmt(t.admin.recomputed, { ms: sp.recomputed })}</Alert>}
 
       <section aria-labelledby="gonogo" className="mb-6">
-        <h2 id="gonogo" className="mb-2 text-lg font-medium">
+        <h2 id="gonogo" className="mb-2 text-lg font-bold">
           {t.admin.goNoGo}
         </h2>
         <ul className="grid grid-cols-2 gap-2 md:grid-cols-3">
@@ -78,7 +78,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       </section>
 
       <section aria-labelledby="density" className="mb-6">
-        <h2 id="density" className="mb-2 text-lg font-medium">
+        <h2 id="density" className="mb-2 text-lg font-bold">
           {t.admin.ui.density}
         </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -94,7 +94,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       </section>
 
       <section aria-labelledby="behaviour" className="mb-6">
-        <h2 id="behaviour" className="mb-2 text-lg font-medium">
+        <h2 id="behaviour" className="mb-2 text-lg font-bold">
           {t.admin.ui.behaviour} · {m.trips.week}
         </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -106,7 +106,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       </section>
 
       <section aria-labelledby="impact" className="mb-6">
-        <h2 id="impact" className="mb-2 text-lg font-medium">
+        <h2 id="impact" className="mb-2 text-lg font-bold">
           {t.admin.ui.impact}
         </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -118,7 +118,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       </section>
 
       <section aria-labelledby="survey" className="mb-6">
-        <h2 id="survey" className="mb-2 text-lg font-medium">
+        <h2 id="survey" className="mb-2 text-lg font-bold">
           {t.admin.ui.surveyHeading} · n = {m.survey.n}
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -150,7 +150,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       </section>
 
       <section aria-labelledby="heat" className="mb-6">
-        <h2 id="heat" className="mb-1 text-lg font-medium">
+        <h2 id="heat" className="mb-1 text-lg font-bold">
           {t.admin.heatmap}
         </h2>
         <p className="mb-2 text-sm text-muted">{t.admin.heatmapHelp}</p>

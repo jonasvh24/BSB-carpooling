@@ -20,7 +20,7 @@ export function ConsentForm({ reconsent, policyVersion }: { reconsent: boolean; 
         </Alert>
       )}
       {state?.errors && <Alert kind="error">{c.bothRequired}</Alert>}
-      <h2 className="text-lg font-medium">{c.summaryTitle}</h2>
+      <h2 className="text-lg font-bold">{c.summaryTitle}</h2>
       <ul className="mt-2 mb-4 list-disc space-y-1 pl-5 text-sm">
         {c.summary.map((line) => (
           <li key={line}>{line}</li>
@@ -33,15 +33,15 @@ export function ConsentForm({ reconsent, policyVersion }: { reconsent: boolean; 
         <span className="text-muted">(v{policyVersion})</span>
       </p>
       <label className="mb-3 flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
-        <input type="checkbox" name="location" checked={loc} onChange={(e) => setLoc(e.target.checked)} className="mt-1 h-5 w-5 accent-accent" required />
+        <input type="checkbox" name="location" checked={loc} onChange={(e) => setLoc(e.target.checked)} className="mt-1 h-5 w-5 accent-navy" required />
         <span>{c.location}</span>
       </label>
       <label className="mb-3 flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
-        <input type="checkbox" name="research" checked={res} onChange={(e) => setRes(e.target.checked)} className="mt-1 h-5 w-5 accent-accent" required />
+        <input type="checkbox" name="research" checked={res} onChange={(e) => setRes(e.target.checked)} className="mt-1 h-5 w-5 accent-navy" required />
         <span>{c.research}</span>
       </label>
       <p className="text-sm text-muted mb-4">{c.bothRequired}</p>
-      <h2 className="text-lg font-medium">{c.rulesTitle}</h2>
+      <h2 className="text-lg font-bold">{c.rulesTitle}</h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
         {c.rules.map((line) => (
           <li key={line}>{line}</li>

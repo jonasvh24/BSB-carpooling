@@ -52,7 +52,7 @@ function TimePicker({
             key={p}
             type="button"
             aria-pressed={!custom && value === p}
-            className={`min-h-11 rounded-lg border px-2 ${!custom && value === p ? "border-accent bg-surface-2 font-medium" : "border-border bg-surface"}`}
+            className={`min-h-11 rounded-xl border px-2 transition-colors ${!custom && value === p ? "border-navy bg-navy font-semibold text-on-navy" : "border-border bg-surface"}`}
             onClick={() => {
               setCustom(false);
               onChange(p);
@@ -64,7 +64,7 @@ function TimePicker({
         <button
           type="button"
           aria-pressed={custom}
-          className={`min-h-11 rounded-lg border px-2 ${custom ? "border-accent bg-surface-2 font-medium" : "border-border bg-surface"}`}
+          className={`min-h-11 rounded-xl border px-2 transition-colors ${custom ? "border-navy bg-navy font-semibold text-on-navy" : "border-border bg-surface"}`}
           onClick={() => setCustom(true)}
         >
           {t.onboarding.days.custom}
@@ -195,7 +195,7 @@ export function DaysForm({ sites, initial, returnTo }: Props) {
             return (
               <label
                 key={wd}
-                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border ${on ? "border-accent bg-surface-2 font-medium" : "border-border bg-surface"}`}
+                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border transition-colors ${on ? "border-navy bg-navy font-semibold text-on-navy" : "border-border bg-surface"}`}
               >
                 <input
                   type="checkbox"
@@ -281,11 +281,11 @@ export function DaysForm({ sites, initial, returnTo }: Props) {
                       </Select>
                     </label>
                     <label className="flex items-center gap-2 min-h-11">
-                      <input type="checkbox" checked={e.wantsAm} onChange={(ev) => patch(wd, { wantsAm: ev.target.checked })} className="h-4 w-4 accent-accent" />
+                      <input type="checkbox" checked={e.wantsAm} onChange={(ev) => patch(wd, { wantsAm: ev.target.checked })} className="h-4 w-4 accent-navy" />
                       {t.onboarding.days.gridAm}
                     </label>
                     <label className="flex items-center gap-2 min-h-11">
-                      <input type="checkbox" checked={e.wantsPm} onChange={(ev) => patch(wd, { wantsPm: ev.target.checked })} className="h-4 w-4 accent-accent" />
+                      <input type="checkbox" checked={e.wantsPm} onChange={(ev) => patch(wd, { wantsPm: ev.target.checked })} className="h-4 w-4 accent-navy" />
                       {t.onboarding.days.gridPm}
                     </label>
                   </div>

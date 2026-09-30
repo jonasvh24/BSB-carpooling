@@ -60,7 +60,7 @@ export function PrefsForm({ initial, returnTo }: Props) {
       />
       <div className="mb-4">
         <label className="flex items-start gap-2">
-          <input type="checkbox" name="genderPref" checked={same} onChange={(e) => setSame(e.target.checked)} className="mt-1 h-4 w-4 accent-accent" />
+          <input type="checkbox" name="genderPref" checked={same} onChange={(e) => setSame(e.target.checked)} className="mt-1 h-4 w-4 accent-navy" />
           <span>
             <span className="block font-medium">{t.onboarding.prefs.sameGender}</span>
             <span className="block text-sm text-muted">{t.onboarding.prefs.sameGenderHelp}</span>

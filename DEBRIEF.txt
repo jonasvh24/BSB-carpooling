@@ -242,7 +242,9 @@ What is in the folder:
                         the rerun passed all nine)
   Production build      compiles
   Preview server        running at http://localhost:3100
-  Demo data             41 users (40 fake staff + 1 admin), 127 matches
+  Demo data             41 users (40 fake staff + 1 admin), 108 matches,
+                        set up as The British School of Brussels, Tervuren
+  Look                  BSB colours (navy, red, gold), BSB logo, Open Sans
 
 Phases 0 to 5 are complete. Everything the brief asked to be built is built.
 

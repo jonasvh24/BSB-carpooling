@@ -1,5 +1,6 @@
 import { t } from "@/i18n";
 import { LinkButton } from "@/components/ui";
+import { AuthShell } from "@/components/brand";
 
 export const metadata = { title: t.auth.errorTitle };
 
@@ -12,14 +13,14 @@ export default async function ErrorPage({ searchParams }: { searchParams: Promis
         ? t.auth.suspended
         : t.auth.invalidLink;
   return (
-    <main id="main" className="mx-auto max-w-lg px-4 py-10">
-      <h1 className="text-2xl font-semibold">{t.auth.errorTitle}</h1>
+    <AuthShell>
+      <h1 className="text-2xl font-bold">{t.auth.errorTitle}</h1>
       <p role="alert" className="mt-2">
         {message}
       </p>
       <div className="mt-6">
         <LinkButton href="/signin">{t.auth.tryAgain}</LinkButton>
       </div>
-    </main>
+    </AuthShell>
   );
 }

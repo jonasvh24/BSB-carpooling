@@ -40,7 +40,7 @@ function SiteForm({ site }: { site?: { id: string; name: string; address: string
         </Field>
       </div>
       <label className="col-span-2 mb-3 flex items-center gap-2 text-sm">
-        <input type="checkbox" name="active" defaultChecked={site?.active ?? true} className="h-4 w-4 accent-accent" /> {t.admin.ui.site.active}
+        <input type="checkbox" name="active" defaultChecked={site?.active ?? true} className="h-4 w-4 accent-navy" /> {t.admin.ui.site.active}
       </label>
       <div className="col-span-2">
         <Button type="submit">{t.app.save}</Button>

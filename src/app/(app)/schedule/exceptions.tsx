@@ -8,7 +8,7 @@ type Exception = { id: string; date: string; kind: string; arriveBy: string | nu
 export function ExceptionsPanel({ exceptions, today }: { exceptions: Exception[]; today: string }) {
   return (
     <section className="mt-8">
-      <h2 className="text-lg font-medium">{t.schedule.exceptions}</h2>
+      <h2 className="text-lg font-bold">{t.schedule.exceptions}</h2>
       {exceptions.length > 0 && (
         <ul className="mt-2 divide-y divide-border rounded-lg border border-border bg-surface">
           {exceptions.map((e) => (
