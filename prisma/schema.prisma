@@ -1,0 +1,453 @@
+// Postgres-portable by design: no Prisma enums, no Json columns.
+// Enum-like columns are String and are constrained by the Zod unions in src/lib/enums.ts.
+// JSON is stored as text and parsed with Zod at the boundary.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organisation {
+  id                      String   @id @default(cuid())
+  name                    String
+  slug                    String   @unique
+  allowedEmailDomains     String   @default("") // comma list, lower-case
+  timezone                String   @default("Europe/Brussels")
+  headcount               Int      @default(100)
+  kmRateCents             Int      @default(40)
+  co2GramsPerKm           Int      @default(130)
+  policyVersion           String   @default("1")
+  matchDetourThresholdMin Int      @default(10)
+  digestTime              String   @default("18:00")
+  goNoGoThresholds        String   @default("{}") // JSON text, see src/lib/admin/thresholds.ts
+  createdAt               DateTime @default(now())
+
+  sites          Site[]
+  users          User[]
+  nonWorkingDays NonWorkingDay[]
+  matches        Match[]
+  pools          Pool[]
+  invitations    Invitation[]
+}
+
+model Site {
+  id                    String  @id @default(cuid())
+  orgId                 String
+  name                  String
+  address               String
+  lat                   Float
+  lng                   Float
+  defaultArriveBy       String  @default("08:15")
+  defaultDepartEarliest String  @default("16:30")
+  parkingNote           String?
+  active                Boolean @default(true)
+
+  org             Organisation    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  scheduleEntries ScheduleEntry[]
+  matches         Match[]
+  pools           Pool[]
+
+  @@index([orgId])
+}
+
+// Admin-invited addresses outside the allowed domains.
+model Invitation {
+  id        String    @id @default(cuid())
+  orgId     String
+  email     String    @unique
+  invitedBy String?
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  org Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  orgId                 String
+  email                 String    @unique
+  emailVerified         DateTime?
+  name                  String    @default("")
+  phone                 String?
+  photoUrl              String?
+  role                  String    @default("MEMBER") // MEMBER | ADMIN
+  status                String    @default("ACTIVE") // ACTIVE | SUSPENDED | DELETED
+  gender                String? // stored only when the user opts into same-gender matching
+  homeAddress           String?
+  homeLat               Float?
+  homeLng               Float?
+  approxLat             Float?
+  approxLng             Float?
+  onboardingStep        Int       @default(1)
+  onboardingCompletedAt DateTime?
+  isSeed                Boolean   @default(false)
+  muteEmail             Boolean   @default(false)
+  lastActiveAt          DateTime?
+  createdAt             DateTime  @default(now())
+
+  org                Organisation        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  accounts           Account[]
+  sessions           Session[]
+  profile            CommuteProfile?
+  scheduleEntries    ScheduleEntry[]
+  scheduleExceptions ScheduleException[]
+  surveyResponses    SurveyResponse[]
+  consents           Consent[]
+  matchesAsDriver    Match[]             @relation("MatchDriver")
+  matchesAsPassenger Match[]             @relation("MatchPassenger")
+  requestsSent       PoolRequest[]       @relation("RequestFrom")
+  requestsReceived   PoolRequest[]       @relation("RequestTo")
+  poolMemberships    PoolMember[]
+  tripsDriven        Trip[]
+  tripParticipations TripParticipant[]
+  messages           Message[]
+  notifications      Notification[]
+  reportsMade        Report[]            @relation("Reporter")
+  reportsReceived    Report[]            @relation("Reported")
+  blocksMade         Block[]             @relation("Blocker")
+  blocksReceived     Block[]             @relation("Blocked")
+
+  @@index([orgId, homeLat, homeLng])
+}
+
+model CommuteProfile {
+  userId         String   @id
+  rideRole       String   @default("EITHER") // DRIVER | PASSENGER | EITHER
+  preferDriving  Boolean  @default(false)
+  directions     String   @default("BOTH") // AM | PM | BOTH
+  vehicleDesc    String?
+  seatsAvailable Int      @default(0)
+  maxDetourMin   Int      @default(10)
+  pickupStyle    String   @default("DOOR") // DOOR | MEETING_POINT
+  maxWalkM       Int      @default(250)
+  maxExtraRideMin Int     @default(15)
+  smoking        String   @default("NO") // NO | YES | ANY
+  talk           String   @default("ANY") // QUIET | CHATTY | ANY
+  music          String   @default("ANY") // ANY | NONE | DRIVER_CHOICE
+  genderPref     String   @default("ANY") // ANY | SAME
+  languages      String   @default("") // comma list
+  costMode       String   @default("EITHER") // CONTRIBUTE | ALTERNATE | EITHER
+  notes          String?
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ScheduleEntry {
+  id             String  @id @default(cuid())
+  userId         String
+  weekday        Int // 1 = Mon ... 7 = Sun
+  siteId         String
+  arriveBy       String
+  arriveFlexMin  Int     @default(15)
+  departEarliest String
+  departFlexMin  Int     @default(30)
+  wantsAm        Boolean @default(true)
+  wantsPm        Boolean @default(true)
+  active         Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekday])
+  @@index([siteId, weekday])
+}
+
+model ScheduleException {
+  id             String  @id @default(cuid())
+  userId         String
+  date           String // YYYY-MM-DD
+  kind           String // OFF | CHANGED
+  arriveBy       String?
+  departEarliest String?
+  note           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model NonWorkingDay {
+  id    String @id @default(cuid())
+  orgId String
+  date  String // YYYY-MM-DD
+  label String
+
+  org Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, date])
+}
+
+model SurveyResponse {
+  id        String   @id @default(cuid())
+  userId    String
+  surveyKey String // ONBOARDING | WEEK4 | EXIT
+  answers   String // JSON text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, surveyKey])
+}
+
+model Consent {
+  id            String    @id @default(cuid())
+  userId        String
+  policyVersion String
+  scope         String // LOCATION_SHARING | PILOT_RESEARCH
+  acceptedAt    DateTime  @default(now())
+  withdrawnAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scope])
+}
+
+// Engine output cache. Always regenerable: upsert by the unique key, delete stale rows.
+model Match {
+  id              String   @id @default(cuid())
+  orgId           String
+  siteId          String
+  driverId        String
+  passengerId     String
+  direction       String // AM | PM
+  score           Int
+  sharedDays      String // "1,2,4"
+  detourMinAvg    Float
+  detourMinMax    Float
+  extraRideMinAvg Float
+  details         String // JSON text: { days: { [weekday]: { pickupTime, siteTime, detourMin } }, reasons: string[], estimated }
+  status          String   @default("NEW") // NEW | SEEN | DISMISSED_BY_DRIVER | DISMISSED_BY_PASSENGER | CONVERTED
+  computedAt      DateTime @default(now())
+
+  org       Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  site      Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  driver    User         @relation("MatchDriver", fields: [driverId], references: [id], onDelete: Cascade)
+  passenger User         @relation("MatchPassenger", fields: [passengerId], references: [id], onDelete: Cascade)
+
+  @@unique([driverId, passengerId, direction])
+  @@index([passengerId])
+  @@index([orgId, siteId])
+}
+
+model PoolRequest {
+  id          String    @id @default(cuid())
+  poolId      String?
+  fromUserId  String
+  toUserId    String
+  direction   String // AM | PM
+  days        String // "1,2,3"
+  message     String?
+  status      String    @default("PENDING") // PENDING | ACCEPTED | DECLINED | EXPIRED | WITHDRAWN
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  pool     Pool? @relation(fields: [poolId], references: [id], onDelete: SetNull)
+  fromUser User  @relation("RequestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User  @relation("RequestTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+}
+
+model Pool {
+  id            String    @id @default(cuid())
+  orgId         String
+  siteId        String
+  direction     String // AM | PM
+  name          String
+  status        String    @default("ACTIVE") // FORMING | ACTIVE | PAUSED | ENDED
+  rotateDrivers Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  endedAt       DateTime?
+
+  org      Organisation  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  site     Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  members  PoolMember[]
+  trips    Trip[]
+  messages Message[]
+  requests PoolRequest[]
+  reports  Report[]
+
+  @@index([orgId, status])
+}
+
+model PoolMember {
+  id          String    @id @default(cuid())
+  poolId      String
+  userId      String
+  memberRole  String // DRIVER | PASSENGER
+  days        String // "1,2,3"
+  pickupLat   Float?
+  pickupLng   Float?
+  pickupLabel String?
+  stopOrder   Int       @default(0)
+  pickupTimes String    @default("{}") // JSON text: weekday -> "HH:mm"
+  status      String    @default("ACTIVE") // ACTIVE | LEFT
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+
+  pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, userId])
+  @@index([userId, status])
+}
+
+model Trip {
+  id            String   @id @default(cuid())
+  poolId        String
+  date          String // YYYY-MM-DD
+  direction     String // AM | PM
+  driverId      String? // null once the driver's account is deleted (§9.6)
+  status        String   @default("PLANNED") // PLANNED | CONFIRMED | CANCELLED | DONE | NOT_HAPPENED
+  verified      Boolean  @default(false)
+  plannedDepart String
+  plannedRoute  String? // JSON text
+  distanceM     Int?
+  kmSaved       Float?
+  createdAt     DateTime @default(now())
+
+  pool         Pool              @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  driver       User?             @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  participants TripParticipant[]
+
+  @@unique([poolId, date, direction])
+  @@index([date, status])
+}
+
+// userId is nullable so a deleted user's history can be anonymised (§9.6).
+model TripParticipant {
+  id          String    @id @default(cuid())
+  tripId      String
+  userId      String?
+  anonymisedId String?
+  status      String    @default("UNKNOWN") // IN | OUT | NO_SHOW | UNKNOWN
+  respondedAt DateTime?
+
+  trip Trip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([tripId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  poolId    String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([poolId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  kind      String
+  title     String
+  body      String
+  link      String?
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+  emailedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model Report {
+  id             String    @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  poolId         String?
+  reason         String
+  details        String?
+  status         String    @default("OPEN") // OPEN | RESOLVED
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?
+
+  reporter User  @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User  @relation("Reported", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  pool     Pool? @relation(fields: [poolId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+// No personal data: keys are rounded coordinates or query strings.
+model GeoCache {
+  key       String   @id
+  kind      String // GEOCODE | REVERSE | ROUTE
+  value     String // JSON text
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Auth.js tables. Sessions use JWT, but the adapter is needed for magic-link tokens.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

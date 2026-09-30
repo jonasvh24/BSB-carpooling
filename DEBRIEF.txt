@@ -1,0 +1,301 @@
+JVCARPOOL ("POOLMATE") - FULL DEBRIEF
+Written 2026-09-30
+Folder: ~/Projects/grey-tag/jvcarpool
+Preview: http://localhost:3100   (dev tools: http://localhost:3100/dev)
+
+
+1. WHAT THIS IS, IN ONE PARAGRAPH
+---------------------------------
+Poolmate is a carpooling web app for the staff of one school. Teachers and
+other staff sign in with their school email, say where they live and what
+hours they work, and the app finds colleagues who live along the same route
+and keep compatible hours. Matched people can form a carpool ("pool"), get a
+daily "tomorrow's pickup is at 07:42" message, confirm or cancel with one
+tap, and log that the trip happened. The school's pilot owner gets an admin
+dashboard that says whether the idea actually works at this school.
+
+It is a PILOT tool, not a finished product. It is meant to run for six weeks
+on one laptop and answer three questions, in this order:
+
+  1. Density    - do enough staff live near each other, with compatible
+                  hours, to be matched at all?
+  2. Behaviour  - do matches turn into carpools that are still running after
+                  week 4?
+  3. Commercial - would the school or an employer pay for this, and for what?
+
+If question 1 fails, the pilot stops. The admin dashboard is built to show
+that answer within days of launch.
+
+Not included on purpose: students, parents, school trips, in-app payments,
+app-store apps.
+
+
+2. WHERE IT CAME FROM
+---------------------
+You gave a build brief (CARPOOL_BRIEF.md) on 2026-09-16 and asked for it to
+be built as "jvcarpool" in the grey-tag folder. The brief is the spec, the
+build plan and the acceptance criteria in one. It is kept in the project as
+docs/BRIEF.md. The app was built on 2026-09-16/17 in six phases (0 to 5).
+
+
+3. IMPORTANT: THIS FOLDER WAS RESTORED ON 2026-09-30
+----------------------------------------------------
+When you asked for this debrief, the project folder no longer existed. The
+whole ~/Projects/grey-tag folder was gone (noticed missing on 2026-09-23),
+it was never pushed to GitHub, there was no backup, and the original brief
+was gone from Downloads too. Nothing in the Claude session history deleted
+it, so how it disappeared is unknown.
+
+The project was rebuilt from the recorded history of the original build
+session, which contained the full text of every file that was written and
+every edit made to it. What that means in practice:
+
+  - Source code, tests, docs and the brief: recovered in full. Files that a
+    later session had happened to print were compared against the restored
+    copies and matched.
+  - All tests pass on the restored copy (see section 9).
+  - Git history: NOT recovered. The original seven commits are gone. The
+    folder is a fresh git repo with one scaffold commit; everything else is
+    uncommitted.
+  - Database: recreated fresh. There was only demo data in it, and that has
+    been regenerated (41 users, 127 matches). The original had two database
+    migrations; the restored one has a single equivalent migration.
+  - .env: recreated from .env.example with a new random AUTH_SECRET.
+    AUTH_URL is set to http://localhost:3100 to match the preview.
+
+Strong recommendation: commit this and push it to a private GitHub repo so
+it cannot vanish again.
+
+
+4. WHAT A STAFF MEMBER CAN DO
+-----------------------------
+Sign in
+  Email magic link, no passwords. Only the school's email domains are
+  allowed, plus addresses an admin has invited.
+
+Onboarding (seven short screens, built for a phone, under five minutes)
+  1. About you       - name, optional phone and photo, languages
+  2. Where you live  - address search with a map pin you can drag
+  3. School days     - which days, arrive-by time, leave time, how flexible;
+                       per-day grid for part-timers and multi-campus staff
+  4. Drive or ride   - driver / passenger / either; car, seats, max detour;
+                       max walk and max extra time for passengers
+  5. Preferences     - smoking, quiet or chatty, music, same-gender option,
+                       how to share costs, a short note
+  6. Research        - ten pilot questions (how you commute now, what it
+                       costs, would you pay, etc.)
+  7. Consent         - two required checkboxes (location sharing, research)
+                       and the ground rules
+
+Matches (/matches)
+  A list of compatible colleagues with a score out of 100 and plain reasons
+  such as "+6 min detour", "Both at school by 08:10 on Wed, Fri",
+  "Pickup 08:03 at your door", "You both speak Dutch". Morning and afternoon
+  are matched separately. Buttons: "Ask to join" / "Invite" / "Not for me".
+  If nobody matches yet, it shows how many colleagues live nearby (counts
+  only, never names) and an invite link.
+
+Requests (/requests)
+  Accept, decline or withdraw. Requests expire after seven days.
+
+Carpools (/pools and /pools/[id])
+  Members, a map with the route and stops, a per-weekday timetable (driver
+  leaves, each pickup, arrival), chat, upcoming trips, "I can't make it
+  on...", leave, report a problem. Drivers can also set a meeting point,
+  change days, pause the pool and turn on driver rotation (the driver
+  changes each week).
+
+Daily running
+  18:00  - tomorrow's trips are created and everyone gets a digest with
+           Confirm / Can't make it.
+  If the driver cancels - everyone is told at once, and passengers get a
+           "Find a lift" list of other drivers plus a public transport link.
+  20:00  - the driver is asked whether the trip happened.
+  After 72 hours with no answer the trip is marked done (unverified).
+  02:00  - all matches are recomputed and old trip logs are anonymised.
+
+Also: cost-sharing tally per pool (settled outside the app), reliability
+score after five trips, thumbs up after a trip, notifications page, profile
+and schedule editing, week-4 and exit surveys.
+
+Settings and privacy (/settings, /settings/privacy)
+  Mute email, see and withdraw consents, download all your data as JSON,
+  delete your account, report or block a colleague.
+
+
+5. WHAT THE ADMIN CAN DO (/admin)
+---------------------------------
+Dashboard with every metric the brief asks for, each with its definition:
+sign-up rate, onboarding completion, role and site split, how many people
+are "matchable", why the rest are not (nobody in the corridor, times don't
+fit, no drivers, no seats), pools, trips per week, cancellation and no-show
+rates, km saved, CO2 saved, parking spaces freed, money saved, survey
+results as bar charts, and a heat map of where staff live (coarse cells
+only, never a single household).
+
+Go/no-go panel: the pilot's pass marks (for example sign-up rate at least
+30%, matchable at least 50%) shown against the current values, colour coded.
+The thresholds can be edited.
+
+Actions: invite staff by pasting a CSV of emails, manage sites, holiday
+calendar, rates and headcount, recompute matches, export CSV (users,
+matches, trips, survey), suspend or delete a user, work through reports,
+send the week-4 and exit surveys. Every admin action is written to an audit
+log.
+
+
+6. HOW MATCHING WORKS (SHORT VERSION)
+-------------------------------------
+For each site, weekday and direction (morning = home to school, afternoon =
+school to home) it pairs drivers with passengers. A pair is thrown out if
+they share no days, conflict on smoking, fail the same-gender preference,
+the passenger is not roughly on the driver's way, the real routed detour is
+longer than the driver allows, their time windows do not overlap, or the car
+is full.
+
+Survivors get a score:
+  40% how small the detour is
+  25% how close their times are
+  15% how many days they share
+  10% soft preferences (quiet vs chatty, shared language)
+  10% reliability from past trips
+Only scores of 40 or more are shown.
+
+Driving times come from free OpenStreetMap services (OSRM). If that service
+is down, the app falls back to a straight-line estimate and labels times as
+estimates. No paid APIs and no API keys anywhere.
+
+
+7. PRIVACY RULES BUILT IN
+-------------------------
+Home addresses are personal data under GDPR, so these are hard rules:
+  - Staff only. No minors anywhere in the system.
+  - Your exact home is visible only to you and members of a pool you have
+    joined. Everyone else sees an approximate area of about 500 m.
+  - Phone numbers are shown only inside an accepted pool.
+  - Gender is stored only if you opt into same-gender matching, and is never
+    displayed.
+  - Consent is recorded with a policy version. A new policy version forces
+    everyone to consent again. Withdrawing location consent hides you from
+    matching.
+  - Delete account really deletes; trip history is anonymised.
+  - Trip logs are anonymised 12 months after a pool ends.
+  - Blocked pairs never match. Sign-in, search, requests, messages and
+    reports are rate limited.
+  - /privacy is a plain-language notice. It is a DRAFT for the pilot owner
+    to edit before real use.
+  - With PILOT_MODE=true every developer shortcut (/dev pages) is gone.
+
+
+8. HOW IT IS BUILT
+------------------
+  Type        Mobile-first web app that installs to the phone home screen
+              (PWA). One codebase, works on desktop too.
+  Framework   Next.js 16, React 19, TypeScript, Tailwind CSS 4
+  Database    SQLite file (prisma/dev.db) through Prisma 6. Written so it
+              can move to Postgres later without a rewrite.
+  Sign-in     Auth.js v5 email magic link
+  Email       Nodemailer over SMTP. In development the link is printed to
+              the console and shown at /dev/mailbox.
+  Maps        Leaflet with OpenStreetMap tiles; Photon for address search;
+              Nominatim for pin drags; OSRM for driving times
+  Schedule    node-cron inside the app (18:00, 20:00, 02:00 jobs)
+  Tests       Vitest (35 unit tests) and Playwright (9 browser tests)
+  Language    English UI (British), every string in src/i18n/en.ts so Dutch
+              and French can be added later as translation files
+  Tenancy     Organisation -> sites -> users, so more schools or companies
+              are added as data later
+
+What is in the folder:
+  docs/BRIEF.md                  the original specification
+  docs/pilot-runbook.md          step-by-step guide for running the pilot
+  docs/launch-announcement.md    staffroom note and poster text
+  PLAN.md                        task list per phase, all ticked but one
+  DECISIONS.md                   35 choices made where the brief left room
+  CHANGELOG.md                   what each phase delivered
+  CLAUDE.md                      working notes for future Claude sessions
+  prisma/schema.prisma           database structure
+  prisma/seed.ts                 creates the org, site, admins, 40 fake staff
+  src/app/                       all pages: signin, onboarding, matches,
+                                 requests, pools, trips, schedule, profile,
+                                 notifications, settings, survey, admin,
+                                 privacy, dev
+  src/lib/matching/              the matching engine (pure logic, tested)
+  src/lib/pools/                 pool forming, daily trips, lifts, cost tally
+  src/lib/admin/                 dashboard metrics and thresholds
+  src/lib/geo/                   address lookup, routing, caching, fallback
+  src/lib/jobs/                  the scheduled jobs
+  src/components/                shared UI pieces
+  src/i18n/en.ts                 all user-facing text
+  e2e/                           browser tests
+  scripts/                       backup, tunnel, recompute, icon generator
+
+
+9. CURRENT STATE (CHECKED 2026-09-30 ON THE RESTORED COPY)
+----------------------------------------------------------
+  Type check            clean
+  Lint                  clean
+  Unit tests            35 of 35 pass
+  Browser tests         9 of 9 pass
+                        (on the very first run after the restore one test
+                        timed out while pages compiled for the first time;
+                        the rerun passed all nine)
+  Production build      compiles
+  Preview server        running at http://localhost:3100
+  Demo data             41 users (40 fake staff + 1 admin), 127 matches
+
+Phases 0 to 5 are complete. Everything the brief asked to be built is built.
+
+
+10. WHAT IS NOT DONE
+--------------------
+One item in the plan is still open, and it cannot be done from this machine
+alone:
+
+  - "Full flow on a real phone over the tunnel." This needs cloudflared
+    (not installed here; "brew install cloudflared") and a real phone. It
+    also puts the app on a public web address, so it is your call to make.
+    Steps are in docs/pilot-runbook.md.
+
+Left out on purpose because the brief says "do not build now":
+  self-serve sign-up and billing, hosted deployment and Postgres, Microsoft
+  or Google single sign-on, HR and CO2 exports, parking integration, push
+  notifications, calendar sync, Dutch and French translations, native apps,
+  parents and students, event carpooling.
+
+Ideas noted in PLAN.md but not built:
+  push notifications once installed on iPhone, a Postgres migration guide,
+  admin-editable matching constants, a "nudge non-completers" button.
+
+Before a real pilot you would still need to: put the real school, email
+domain and admin emails in .env; set up real SMTP for email; run
+"npm run seed:purge" to remove the fake staff; have the privacy notice
+reviewed; and set PILOT_MODE=true.
+
+
+11. HOW TO USE THE PREVIEW
+--------------------------
+The preview is running now at http://localhost:3100
+
+Fastest way to look around:
+  1. Open http://localhost:3100/dev
+  2. Click "login" next to any person to become them. Pick a seed user to
+     see matches, or admin@example.org to see the admin dashboard at /admin.
+
+To try the real sign-in: go to /signin, enter anything@example.org, then
+open http://localhost:3100/dev/mailbox and click the link.
+
+Port 3000 is used by another of your projects (kleer), which is why this one
+is on 3100.
+
+If the preview has stopped (for example after a restart of the Mac):
+  cd ~/Projects/grey-tag/jvcarpool
+  npx next dev -p 3100
+
+Other commands:
+  npm test              run all tests
+  npm run seed          add the 40 fake staff
+  npm run seed:purge    remove all fake staff
+  npm run recompute     recompute all matches
+  npm run backup        copy the database to backups/
+  npm run tunnel        public link for phones (needs cloudflared)

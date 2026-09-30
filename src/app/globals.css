@@ -1,26 +1,91 @@
 @import "tailwindcss";
 
+/* Palette chosen for ≥ 4.5:1 text contrast on both backgrounds. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #eeeeea;
+  --text: #1b1f23;
+  --muted: #5a6470;
+  --border: #d5d9de;
+  --accent: #0b6e63;
+  --accent-strong: #094f47;
+  --accent-text: #ffffff;
+  --danger: #b3261e;
+  --warn: #8a5a00;
+  --ok: #1f6f3f;
+  --focus: #1a5fb4;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-focus: var(--focus);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #121416;
+    --surface: #1b1e21;
+    --surface-2: #24282c;
+    --text: #eceff1;
+    --muted: #a5adb5;
+    --border: #3a4046;
+    --accent: #5fc8b8;
+    --accent-strong: #8adfd2;
+    --accent-text: #0b1f1c;
+    --danger: #ff8a80;
+    --warn: #ffcc66;
+    --ok: #7ed49a;
+    --focus: #8ab4f8;
   }
 }
 
+html {
+  color-scheme: light dark;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible focus for keyboard users, everywhere. */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  color: var(--text);
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+/* Leaflet needs its CSS; the marker icons are set in code. */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.75rem;
+  z-index: 0;
 }
