@@ -1,7 +1,9 @@
 # jvcarpool — BSB carpooling
 
-**Public pilot URL (Cloudflare quick tunnel, changes when the tunnel restarts):**
-https://roy-under-screw-spectacular.trycloudflare.com
+**Live site:** https://bsb-carpooling.netlify.app (Netlify, Postgres, deploys from `main`)
+
+Local preview through a Cloudflare quick tunnel still works (see "Public URL" below), but
+the Netlify address is the one to share.
 
 Sign-in is open to `@britishschool.be` addresses (for example `012222@britishschool.be`)
 and to anyone an administrator has invited. Accounts are email + password, created on
@@ -33,16 +35,18 @@ the Holidays list for every organisation; it runs automatically on Netlify build
 `netlify.toml` and `scripts/netlify-build.sh` deploy the same code with Postgres instead of SQLite
 and Netlify scheduled functions (`netlify/functions/job-*.mts`) instead of in-process cron.
 
+The site `bsb-carpooling` is linked to this GitHub repository: every push to `main` builds and
+deploys on Netlify's servers, where the managed database is injected as `NETLIFY_DB_URL`
+(`src/lib/db.ts` reads it). Builds must run there, not with `netlify deploy --build`, because the
+database URL is not available locally. Environment variables live in the site settings
+(`npx netlify env:list`); note Netlify reserves `SITE_NAME`, so the campus name is `SCHOOL_SITE_NAME`.
+Add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM` there to enable password-reset texts.
+
 ```
-npx netlify login                      # once, opens the browser
-npx netlify init                       # create the site, link this folder
-npx netlify db init                    # free Postgres (Neon); sets DATABASE_URL
-npx netlify env:set AUTH_SECRET "$(openssl rand -base64 32)"
-npx netlify env:set AUTH_URL https://<site>.netlify.app
-npx netlify env:set JOBS_SECRET "$(openssl rand -hex 24)"
-npx netlify env:set ALLOWED_EMAIL_DOMAINS britishschool.be
-npx netlify env:set PILOT_MODE true    # hides /dev; ORG_*, SITE_*, OWNER_*, TWILIO_* likewise
-npx netlify deploy --build --prod
+npx netlify login                      # once
+npx netlify link --name bsb-carpooling # link a fresh checkout
+npx netlify env:set NAME value --force # change a setting, then push or `netlify deploy --prod --trigger`
+npx netlify logs --source functions    # runtime logs
 ```
 
 
