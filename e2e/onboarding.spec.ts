@@ -1,15 +1,16 @@
 import { test, expect, type Page } from "@playwright/test";
 import { signInAs } from "./helpers";
 import { testDb } from "./db";
+import { at, makeOnboardedUser } from "./factory";
 
 const EMAIL = "onboard.me@example.org";
 
 // Photon and Nominatim are stubbed at the network edge so the test is offline-safe.
 async function stubGeo(page: Page) {
-  await page.route("**/api/geo/search?**", (route) =>
+  await page.route("**/api/geo/search", (route) =>
     route.fulfill({ json: [{ label: "Rue de la Loi 16, 1000 Bruxelles, Belgium", lat: 50.8467, lng: 4.3658 }] }),
   );
-  await page.route("**/api/geo/reverse?**", (route) => route.fulfill({ json: { label: "Dragged address" } }));
+  await page.route("**/api/geo/reverse", (route) => route.fulfill({ json: { label: "Dragged address" } }));
   await page.route("https://tile.openstreetmap.org/**", (route) => route.abort());
 }
 
@@ -26,6 +27,11 @@ test("completes onboarding on a 390 px viewport in under 40 interactions", async
     await page.getByLabel(label, { exact: true }).fill(value);
   };
 
+  // Any Content-Security-Policy violation on the way through fails the test.
+  const cspViolations: string[] = [];
+  page.on("console", (m) => {
+    if (/Content Security Policy|Content-Security-Policy/i.test(m.text())) cspViolations.push(m.text());
+  });
   await stubGeo(page);
   await signInAs(page, request, EMAIL);
   await expect(page).toHaveURL(/\/onboarding/);
@@ -42,6 +48,9 @@ test("completes onboarding on a 390 px viewport in under 40 interactions", async
   await fill("Your home address", "Rue de la Loi");
   await click(/Rue de la Loi 16/);
   await expect(page.getByTestId("chosen-address")).toContainText("Rue de la Loi 16");
+  // The map data licence requires the attribution on every map.
+  await expect(page.locator(".leaflet-control-attribution")).toContainText("OpenStreetMap");
+  await expect(page.locator(".leaflet-control-attribution a[href*='openstreetmap.org/copyright']")).toBeVisible();
   await click("Next");
 
   // Progress must survive a reload: we should be on step 3, not back at 1.
@@ -81,23 +90,24 @@ test("completes onboarding on a 390 px viewport in under 40 interactions", async
   await click("Yes, up to €3", "radio");
   await click("Next");
 
-  // Step 7 — Consent: with one box ticked the submit stays disabled, and the
-  // app keeps redirecting to onboarding.
+  // Step 7 — Consent: without location sharing the submit stays disabled, and
+  // the app keeps redirecting to onboarding. The research box alone is not enough.
   await expect(page.getByRole("heading", { name: "Consent and ground rules" })).toBeVisible();
   const submit = page.getByRole("button", { name: "I agree, show my matches" });
   await expect(submit).toBeDisabled();
-  await click(/Location sharing/, "checkbox");
+  await click(/Pilot research/, "checkbox");
   await expect(submit).toBeDisabled();
   await page.goto("/matches");
   await expect(page).toHaveURL(/\/onboarding/);
   await page.goto("/onboarding?step=7");
   await click(/Location sharing/, "checkbox");
-  await click(/Pilot research/, "checkbox");
   await expect(submit).toBeEnabled();
+  await click(/Pilot research/, "checkbox");
   await click("I agree, show my matches");
 
   await expect(page).toHaveURL(/\/matches/);
   expect(interactions).toBeLessThan(40);
+  expect(cspViolations).toEqual([]);
 
   // Rows written by the wizard.
   const user = await testDb.user.findUniqueOrThrow({ where: { email: EMAIL }, include: { profile: true, scheduleEntries: true, consents: true, surveyResponses: true } });
@@ -116,4 +126,41 @@ test("completes onboarding on a 390 px viewport in under 40 interactions", async
   expect(user.consents.filter((c) => c.withdrawnAt === null).map((c) => c.scope).sort()).toEqual(["LOCATION_SHARING", "PILOT_RESEARCH"]);
   const answers = JSON.parse(user.surveyResponses.find((s) => s.surveyKey === "ONBOARDING")!.answers);
   expect(answers).toMatchObject({ r1: "CAR_ALONE", r2: 25, r3: "50_100", r7: 4, r8: "YES", r9: "UP_TO_3" });
+});
+
+test("research is optional: skipping the questions and leaving the box empty still completes onboarding, and consents are one tap to change", async ({ browser }) => {
+  // A profile parked on the research step, with answers left over from an earlier visit.
+  const u = await makeOnboardedUser("no.research@example.org", at(12), "PASSENGER");
+  await testDb.consent.deleteMany({ where: { userId: u.id } });
+  await testDb.user.update({ where: { id: u.id }, data: { onboardingStep: 6, onboardingCompletedAt: null } });
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  await page.goto(`/dev/login-as/${u.id}`);
+  await page.goto("/onboarding?step=6");
+  await page.getByRole("button", { name: "Skip these questions" }).click();
+  await expect(page.getByRole("heading", { name: "Consent and ground rules" })).toBeVisible();
+  await page.getByRole("checkbox", { name: /Location sharing/ }).check();
+  await page.getByRole("button", { name: "I agree, show my matches" }).click();
+  await expect(page).toHaveURL(/\/matches/);
+
+  const open = () => testDb.consent.findMany({ where: { userId: u.id, withdrawnAt: null }, select: { scope: true } });
+  expect((await open()).map((c) => c.scope)).toEqual(["LOCATION_SHARING"]);
+  expect(await testDb.surveyResponse.count({ where: { userId: u.id } })).toBe(0);
+
+  // Give research consent, then withdraw it: one tap each, and the app keeps working.
+  await page.goto("/settings/privacy");
+  await page.getByRole("button", { name: "Take part in the pilot research" }).click();
+  await expect(page.getByRole("button", { name: "Withdraw research consent" })).toBeVisible();
+  expect((await open()).map((c) => c.scope).sort()).toEqual(["LOCATION_SHARING", "PILOT_RESEARCH"]);
+  await page.getByRole("button", { name: "Withdraw research consent" }).click();
+  await expect(page.getByRole("button", { name: "Take part in the pilot research" })).toBeVisible();
+  await page.goto("/matches");
+  await expect(page).toHaveURL(/\/matches/);
+
+  // Withdrawing location consent takes one tap too and sends the user back to the consent step.
+  await page.goto("/settings/privacy");
+  await page.getByRole("button", { name: "Withdraw location consent" }).click();
+  await page.goto("/matches");
+  await expect(page).toHaveURL(/\/onboarding\?step=7/);
+  await ctx.close();
 });

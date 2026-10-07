@@ -61,7 +61,7 @@ async function ColdStart({ userId, inviteUrl }: { userId: string; inviteUrl: str
   return (
     <Card>
       <p className="font-medium">{t.matches.none}</p>
-      {n > 0 && <p className="mt-1 text-muted">{n === 1 ? t.matches.coldStartOne : fmt(t.matches.coldStart, { n })}</p>}
+      {n > 0 && <p className="mt-1 text-muted">{fmt(t.matches.coldStart, { n })}</p>}
       <div className="mt-4">
         <InviteButton url={inviteUrl} />
       </div>

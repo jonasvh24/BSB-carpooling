@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { requestSignIn, type SignInState } from "./actions";
+import { ownerSignIn, requestSignIn, type OwnerState, type SignInState } from "./actions";
 import { t } from "@/i18n";
 import { Alert, Button, Field, Input } from "@/components/ui";
 
@@ -33,5 +33,27 @@ export function SignInForm() {
         {t.auth.submit}
       </Button>
     </form>
+  );
+}
+
+// Shown only when an owner account is configured in .env.
+export function OwnerSignInForm() {
+  const [state, action, pending] = useActionState<OwnerState, FormData>(ownerSignIn, null);
+  return (
+    <details className="mt-6 border-t border-border pt-4 text-sm" open={Boolean(state?.error)}>
+      <summary className="cursor-pointer text-muted">{t.auth.ownerTitle}</summary>
+      <form action={action} className="mt-3">
+        {state?.error && <Alert kind="error">{state.error === "rateLimited" ? t.auth.rateLimited : t.auth.ownerWrong}</Alert>}
+        <Field label={t.auth.ownerEmail} htmlFor="owner-email">
+          <Input id="owner-email" name="email" type="email" autoComplete="username" required />
+        </Field>
+        <Field label={t.auth.ownerPassword} htmlFor="owner-password">
+          <Input id="owner-password" name="password" type="password" autoComplete="current-password" required />
+        </Field>
+        <Button type="submit" variant="secondary" full disabled={pending}>
+          {t.auth.ownerSubmit}
+        </Button>
+      </form>
+    </details>
   );
 }

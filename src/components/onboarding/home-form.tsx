@@ -41,7 +41,7 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
     timer.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/geo/search?q=${encodeURIComponent(q)}`);
+        const res = await fetch("/api/geo/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) });
         setHits(res.ok ? await res.json() : []);
       } finally {
         setSearching(false);
@@ -53,7 +53,7 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
   async function moved(p: { lat: number; lng: number }) {
     setChosen({ label: t.onboarding.home.searching, ...p });
     try {
-      const res = await fetch(`/api/geo/reverse?lat=${p.lat}&lng=${p.lng}`);
+      const res = await fetch("/api/geo/reverse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) });
       const { label } = res.ok ? await res.json() : { label: `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}` };
       setChosen({ label, ...p });
       setQuery(label);
@@ -66,7 +66,7 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
 
   return (
     <form action={action}>
-      {state?.errors?.form && <Alert kind="error">{t.onboarding.home.needAddress}</Alert>}
+      {state?.errors?.form && <Alert kind="error">{state.errors.form === "tooManyMoves" ? t.onboarding.home.tooManyMoves : t.onboarding.home.needAddress}</Alert>}
       <Field label={t.onboarding.home.search} htmlFor="addressSearch">
         <div className="relative">
           <Input
@@ -106,7 +106,7 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
       {!searching && query.trim().length >= 3 && open && hits.length === 0 && !chosen && (
         <p className="text-sm text-muted mb-3">{t.onboarding.home.noResults}</p>
       )}
-      <HomeMap lat={centre.lat} lng={centre.lng} onMove={moved} ariaLabel={t.onboarding.home.mapLabel} />
+      <HomeMap lat={centre.lat} lng={centre.lng} onMove={moved} ariaLabel={t.onboarding.home.mapLabel} pinLabel={t.onboarding.home.pinLabel} />
       <p className="mt-2 text-sm text-muted">{t.onboarding.home.dragHint}</p>
       {chosen && (
         <p className="mt-2 text-sm">

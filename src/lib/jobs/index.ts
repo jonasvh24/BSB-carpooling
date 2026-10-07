@@ -3,7 +3,7 @@ import { recomputeOrg } from "../matching-service";
 import { expireRequests } from "../pools/service";
 import { autoCloseTrips, materialiseTomorrow, sendDigest, sendVerificationPrompts } from "../pools/daily";
 import { flushQuietHoursEmail, notify } from "../notify";
-import { anonymiseOldTrips } from "../gdpr";
+import { runRetention } from "../retention";
 import { todayInZone } from "../time";
 import { haversineKm } from "../geo/haversine";
 import { t, fmt } from "@/i18n";
@@ -26,9 +26,9 @@ export async function jobVerification(orgId: string, now = new Date()) {
 export async function jobNightly(orgId: string) {
   const expired = await expireRequests();
   const closed = await autoCloseTrips();
-  const anonymised = await anonymiseOldTrips();
+  const retention = await runRetention();
   const recompute = await recomputeOrg(orgId);
-  return { expired, closed, anonymised, recompute: { matches: recompute.matches, ms: recompute.ms } };
+  return { expired, closed, retention, recompute: { matches: recompute.matches, ms: recompute.ms } };
 }
 
 export async function jobMorningFlush() {

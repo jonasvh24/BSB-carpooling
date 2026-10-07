@@ -53,6 +53,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             {t.privacy.title}
           </Link>
         </li>
+        <li>
+          <Link href="/terms" className="underline">
+            {t.terms.title}
+          </Link>
+        </li>
       </ul>
     </>
   );

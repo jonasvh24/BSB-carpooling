@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { approximateLocation } from "@/lib/geo/approx";
 import { recomputeUser } from "@/lib/matching-service";
+import { stripJpegMetadata } from "@/lib/photo";
+import { rateLimit } from "@/lib/rate-limit";
 import {
   aboutSchema,
   consentSchema,
@@ -15,6 +17,8 @@ import {
   prefsSchema,
   researchSchema,
   roleSchema,
+  HOME_CHANGES_PER_DAY,
+  safeReturnTo,
   TOTAL_STEPS,
 } from "@/lib/validation/onboarding";
 
@@ -42,9 +46,9 @@ async function advance(userId: string, step: number, returnTo?: string): Promise
 }
 
 function returnToOf(formData: FormData): string | undefined {
-  const r = formData.get("returnTo");
-  return typeof r === "string" && r.startsWith("/") ? r : undefined;
+  return safeReturnTo(formData.get("returnTo"));
 }
+
 
 export async function saveAbout(_prev: StepState, formData: FormData): Promise<StepState> {
   const user = await requireUser();
@@ -56,13 +60,19 @@ export async function saveAbout(_prev: StepState, formData: FormData): Promise<S
   });
   if (!parsed.success) return { errors: firstErrors(parsed.error) };
   const d = parsed.data;
+  let photoUrl = "";
+  try {
+    photoUrl = d.photoUrl ? stripJpegMetadata(d.photoUrl) : "";
+  } catch {
+    return { errors: { form: "invalid" } };
+  }
   await db.user.update({
     where: { id: user.id },
     data: {
       name: d.name,
       phone: d.phone || null,
       // Empty string keeps the existing photo; "remove" clears it.
-      ...(d.photoUrl ? { photoUrl: d.photoUrl } : formData.get("removePhoto") ? { photoUrl: null } : {}),
+      ...(photoUrl ? { photoUrl } : formData.get("removePhoto") ? { photoUrl: null } : {}),
       profile: { upsert: { create: { languages: d.languages.join(",") }, update: { languages: d.languages.join(",") } } },
     },
   });
@@ -79,6 +89,8 @@ export async function saveHome(_prev: StepState, formData: FormData): Promise<St
   });
   if (!parsed.success) return { errors: { form: "needAddress" } };
   const d = parsed.data;
+  const moved = user.homeLat != null && (user.homeLat !== d.homeLat || user.homeLng !== d.homeLng);
+  if (moved && !rateLimit(`home:${user.id}`, HOME_CHANGES_PER_DAY, 24 * 60 * 60 * 1000)) return { errors: { form: "tooManyMoves" } };
   const approx = approximateLocation({ lat: d.homeLat, lng: d.homeLng }, user.id);
   await db.user.update({
     where: { id: user.id },
@@ -183,6 +195,16 @@ export async function savePrefs(_prev: StepState, formData: FormData): Promise<S
 
 export async function saveResearch(_prev: StepState, formData: FormData): Promise<StepState> {
   const user = await requireUser();
+  // The research questions are optional. Skipping stores nothing and removes
+  // anything stored by an earlier visit to this step.
+  if (formData.get("skip")) {
+    await db.surveyResponse.deleteMany({ where: { userId: user.id, surveyKey: "ONBOARDING" } });
+    return advance(user.id, 6, returnToOf(formData));
+  }
+  if (user.onboardingCompletedAt) {
+    const open = await db.consent.findFirst({ where: { userId: user.id, scope: "PILOT_RESEARCH", withdrawnAt: null }, select: { id: true } });
+    if (!open) return { errors: { form: "invalid" } };
+  }
   const parsed = researchSchema.safeParse(Object.fromEntries(["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10"].map((k) => [k, formData.get(k) ?? ""])));
   if (!parsed.success) return { errors: firstErrors(parsed.error) };
   await db.$transaction([
@@ -195,16 +217,17 @@ export async function saveResearch(_prev: StepState, formData: FormData): Promis
 export async function saveConsent(_prev: StepState, formData: FormData): Promise<StepState> {
   const user = await requireUser();
   const parsed = consentSchema.safeParse({ location: formData.get("location"), research: formData.get("research") });
-  if (!parsed.success) return { errors: { form: "bothRequired" } };
+  if (!parsed.success) return { errors: { form: "locationRequired" } };
+  const research = parsed.data.research === "on";
 
-  // Completion requires every earlier step to have produced its rows.
-  const [profile, days, survey] = await Promise.all([
+  // Completion requires every earlier step to have produced its rows. The
+  // research step is optional and is not checked.
+  const [profile, days] = await Promise.all([
     db.commuteProfile.findUnique({ where: { userId: user.id } }),
     db.scheduleEntry.count({ where: { userId: user.id } }),
-    db.surveyResponse.count({ where: { userId: user.id, surveyKey: "ONBOARDING" } }),
   ]);
-  if (!user.name || user.homeLat == null || !profile || days === 0 || survey === 0) {
-    const step = !user.name ? 1 : user.homeLat == null ? 2 : days === 0 ? 3 : !profile ? 4 : 6;
+  if (!user.name || user.homeLat == null || !profile || days === 0) {
+    const step = !user.name ? 1 : user.homeLat == null ? 2 : days === 0 ? 3 : 4;
     redirect(`/onboarding?step=${step}`);
   }
 
@@ -212,7 +235,10 @@ export async function saveConsent(_prev: StepState, formData: FormData): Promise
   await db.$transaction([
     db.consent.updateMany({ where: { userId: user.id, withdrawnAt: null }, data: { withdrawnAt: new Date() } }),
     db.consent.create({ data: { userId: user.id, scope: "LOCATION_SHARING", policyVersion: version } }),
-    db.consent.create({ data: { userId: user.id, scope: "PILOT_RESEARCH", policyVersion: version } }),
+    // Research refused: answers given at step 6 must not be kept.
+    research
+      ? db.consent.createMany({ data: [{ userId: user.id, scope: "PILOT_RESEARCH", policyVersion: version }] })
+      : db.surveyResponse.deleteMany({ where: { userId: user.id } }),
     db.user.update({
       where: { id: user.id },
       data: { onboardingStep: TOTAL_STEPS + 1, onboardingCompletedAt: user.onboardingCompletedAt ?? new Date() },
@@ -220,12 +246,4 @@ export async function saveConsent(_prev: StepState, formData: FormData): Promise
   ]);
   await recomputeUser(user.id);
   redirect("/matches");
-}
-
-export async function withdrawLocationConsent() {
-  const user = await requireUser();
-  await db.consent.updateMany({ where: { userId: user.id, scope: "LOCATION_SHARING", withdrawnAt: null }, data: { withdrawnAt: new Date() } });
-  // Hidden from matching until re-consented (§9.5): drop cached matches now.
-  await db.match.deleteMany({ where: { OR: [{ driverId: user.id }, { passengerId: user.id }], status: { not: "CONVERTED" } } });
-  revalidatePath("/settings/privacy");
 }

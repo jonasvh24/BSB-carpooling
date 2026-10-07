@@ -7,6 +7,13 @@ import type { UnmatchedReason } from "../matching/types";
 
 export type Metrics = Awaited<ReturnType<typeof computeMetrics>>;
 
+// Smallest group for which survey answers are shown or exported. Below it a
+// bar in a chart is one colleague's answer. Used by the dashboard, the surveys
+// page and the survey export.
+export const MIN_GROUP = 5;
+// Smallest number of homes in a heat-map cell.
+export const MIN_CELL = 3;
+
 // Every §8.2 metric. Definitions live next to the values in the UI (t.admin.metrics.*Def).
 export async function computeMetrics(orgId: string, opts: { withDiagnostics?: boolean } = {}) {
   const org = await db.organisation.findUniqueOrThrow({ where: { id: orgId } });
@@ -18,8 +25,15 @@ export async function computeMetrics(orgId: string, opts: { withDiagnostics?: bo
 
   const users = await db.user.findMany({
     where: { orgId, status: { not: "DELETED" } },
-    include: { profile: true, scheduleEntries: { select: { siteId: true } }, surveyResponses: true },
+    include: {
+      profile: true,
+      scheduleEntries: { select: { siteId: true } },
+      surveyResponses: true,
+      consents: { where: { scope: "PILOT_RESEARCH", withdrawnAt: null }, select: { id: true } },
+    },
   });
+  // Research answers count only while the person's research consent is open.
+  for (const u of users) if (u.consents.length === 0) u.surveyResponses = [];
   const signups = users.length;
   const completed = users.filter((u) => u.onboardingCompletedAt);
   const sites = await db.site.findMany({ where: { orgId }, select: { id: true, name: true } });
@@ -82,22 +96,27 @@ export async function computeMetrics(orgId: string, opts: { withDiagnostics?: bo
     return out;
   };
   const r2Values = onboarding.map((a) => Number(a.r2)).filter((n) => Number.isFinite(n));
+  // Below MIN_GROUP nothing but the count is returned.
+  const suppressed = onboarding.length < MIN_GROUP;
+  const agg = (key: string): Record<string, number> => (suppressed ? {} : counts(key));
   const survey = {
     n: onboarding.length,
-    r1: counts("r1"),
-    r2: { median: median(r2Values), buckets: bucketMinutes(r2Values) },
-    r3: counts("r3"),
-    r4: counts("r4"),
-    r5: counts("r5"),
-    r6: counts("r6"),
-    r7: counts("r7"),
-    r8: counts("r8"),
-    r9: counts("r9"),
-    r10: onboarding.map((a) => String(a.r10 ?? "")).filter(Boolean),
+    suppressed,
+    r1: agg("r1"),
+    r2: suppressed ? { median: 0, buckets: {} as Record<string, number> } : { median: median(r2Values), buckets: bucketMinutes(r2Values) },
+    r3: agg("r3"),
+    r4: agg("r4"),
+    r5: agg("r5"),
+    r6: agg("r6"),
+    r7: agg("r7"),
+    r8: agg("r8"),
+    r9: agg("r9"),
+    // Sorted so the order says nothing about who signed up when.
+    r10: suppressed ? [] : onboarding.map((a) => String(a.r10 ?? "")).filter(Boolean).sort(),
   };
-  const r8yes = survey.n ? (survey.r8.YES ?? 0) / survey.n : 0;
+  const r8yes = !suppressed && survey.n ? (survey.r8.YES ?? 0) / survey.n : 0;
   const week4 = users.flatMap((u) => u.surveyResponses.filter((r) => r.surveyKey === "WEEK4").map((r) => JSON.parse(r.answers) as Record<string, string | number>));
-  const recommend = week4.length ? week4.filter((a) => Number(a.recommend) >= 4).length / week4.length : 0;
+  const recommend = week4.length >= MIN_GROUP ? week4.filter((a) => Number(a.recommend) >= 4).length / week4.length : 0;
   const exit = users.flatMap((u) => u.surveyResponses.filter((r) => r.surveyKey === "EXIT").map((r) => JSON.parse(r.answers) as Record<string, string | number>));
 
   const unmatched: Record<UnmatchedReason, number> = { NO_SCHEDULE: 0, NO_DRIVERS: 0, NO_CANDIDATE_IN_CORRIDOR: 0, TIME_MISMATCH: 0, CAPACITY: 0 };
@@ -142,7 +161,7 @@ export async function computeMetrics(orgId: string, opts: { withDiagnostics?: bo
     },
     survey,
     week4: { n: week4.length, recommend },
-    exit: { n: exit.length, keep: exit.filter((a) => a.keep === "YES").length, pay: exit.filter((a) => a.pay === "YES").length },
+    exit: exit.length >= MIN_GROUP ? { n: exit.length, keep: exit.filter((a) => a.keep === "YES").length, pay: exit.filter((a) => a.pay === "YES").length } : { n: exit.length, keep: 0, pay: 0 },
     goNoGo,
     values,
   };
@@ -163,7 +182,9 @@ function bucketMinutes(xs: number[]): Record<string, number> {
 
 export type HeatCell = { lat: number; lng: number; dLat: number; dLng: number; count: number; coarse: boolean };
 
-// §8.2 heat map: 1 km cells with ≥ 2 users; singletons aggregated into 3 km cells (and only shown if ≥ 2 there).
+// §8.2 heat map: 1 km cells with at least MIN_CELL homes; the rest are pooled into
+// 3 km cells, shown only if they reach MIN_CELL too. The brief said two; with two,
+// an administrator who lives in a cell learns where the one other person lives.
 export async function heatCells(orgId: string): Promise<HeatCell[]> {
   const homes = await db.user.findMany({ where: { orgId, status: "ACTIVE", homeLat: { not: null }, homeLng: { not: null } }, select: { homeLat: true, homeLng: true } });
   const fine = new Map<string, { lat: number; lng: number; n: number }>();
@@ -177,10 +198,10 @@ export async function heatCells(orgId: string): Promise<HeatCell[]> {
   const cells: HeatCell[] = [];
   const singles: Array<{ lat: number; lng: number }> = [];
   for (const c of fine.values()) {
-    if (c.n >= 2) {
+    if (c.n >= MIN_CELL) {
       const { dLat, dLng } = cellSizeDeg(c.lat, 1000);
       cells.push({ lat: Math.floor(c.lat / dLat) * dLat, lng: Math.floor(c.lng / dLng) * dLng, dLat, dLng, count: c.n, coarse: false });
-    } else singles.push(c);
+    } else for (let i = 0; i < c.n; i++) singles.push(c);
   }
   const coarse = new Map<string, { lat: number; lng: number; n: number }>();
   for (const s of singles) {
@@ -190,7 +211,7 @@ export async function heatCells(orgId: string): Promise<HeatCell[]> {
     coarse.set(k, cur);
   }
   for (const c of coarse.values()) {
-    if (c.n < 2) continue;
+    if (c.n < MIN_CELL) continue;
     const { dLat, dLng } = cellSizeDeg(c.lat, 3000);
     cells.push({ lat: Math.floor(c.lat / dLat) * dLat, lng: Math.floor(c.lng / dLng) * dLng, dLat, dLng, count: c.n, coarse: true });
   }

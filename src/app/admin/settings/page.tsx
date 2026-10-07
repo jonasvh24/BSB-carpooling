@@ -1,4 +1,5 @@
-import { t } from "@/i18n";
+import { t, fmt } from "@/i18n";
+import { KM_RATE_CEILING_CENTS } from "@/lib/pools/tally";
 import { requireAdmin } from "@/lib/session";
 import { parseThresholds } from "@/lib/admin/thresholds";
 import { Alert, Button, Card, Field, Input, PageTitle } from "@/components/ui";
@@ -43,8 +44,8 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
             <Field label={t.admin.ui.org.headcount} htmlFor="headcount" help={md.signupRateDef}>
               <Input id="headcount" name="headcount" type="number" min={1} defaultValue={org.headcount} required />
             </Field>
-            <Field label={t.admin.ui.org.kmRate} htmlFor="kmRateCents">
-              <Input id="kmRateCents" name="kmRateCents" type="number" min={0} defaultValue={org.kmRateCents} required />
+            <Field label={t.admin.ui.org.kmRate} htmlFor="kmRateCents" help={fmt(t.admin.ui.org.kmRateHelp, { max: KM_RATE_CEILING_CENTS })}>
+              <Input id="kmRateCents" name="kmRateCents" type="number" min={0} max={KM_RATE_CEILING_CENTS} defaultValue={org.kmRateCents} required />
             </Field>
             <Field label={t.admin.ui.org.co2} htmlFor="co2GramsPerKm">
               <Input id="co2GramsPerKm" name="co2GramsPerKm" type="number" min={0} defaultValue={org.co2GramsPerKm} required />

@@ -21,6 +21,7 @@
   --gold-soft: #fbefd0;
   --on-gold: #3c3011;
   --danger: #b41d22;
+  --on-danger: #ffffff;
   --warn: #775f22;
   --ok: #26613e;
   --ok-soft: #e3f3ea;
@@ -47,6 +48,7 @@
   --color-gold-soft: var(--gold-soft);
   --color-on-gold: var(--on-gold);
   --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
   --color-warn: var(--warn);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
@@ -75,6 +77,7 @@
     --gold-soft: #3c3520;
     --on-gold: #f7dfa1;
     --danger: #ff8a80;
+    --on-danger: #1b0706;
     --warn: #f0c65b;
     --ok: #7ed49a;
     --ok-soft: #1d3327;
@@ -159,10 +162,8 @@ summary {
   color: var(--on-navy);
 }
 
-/* Leaflet needs its CSS; the marker icons are set in code. */
+/* Leaflet needs its CSS; the marker icons are set in code. The map element
+   carries its own height class, so none is set here. */
 .leaflet-container {
-  height: 100%;
-  width: 100%;
-  border-radius: 1rem;
   z-index: 0;
 }

@@ -395,7 +395,9 @@ model Block {
   @@unique([blockerId, blockedId])
 }
 
-// No personal data: keys are rounded coordinates or query strings.
+// Keys are typed address text (GEOCODE) or coordinates rounded to 4 decimals
+// (REVERSE, ROUTE). No name is attached, but a home coordinate is personal data,
+// so rows expire (src/lib/retention.ts) and are removed on account deletion.
 model GeoCache {
   key       String   @id
   kind      String // GEOCODE | REVERSE | ROUTE
@@ -405,6 +407,7 @@ model GeoCache {
 
 model AuditLog {
   id         String   @id @default(cuid())
+  orgId      String? // null on rows written before the column existed
   actorId    String?
   action     String
   targetType String
@@ -413,6 +416,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+  @@index([orgId, createdAt])
 }
 
 // Auth.js tables. Sessions use JWT, but the adapter is needed for magic-link tokens.

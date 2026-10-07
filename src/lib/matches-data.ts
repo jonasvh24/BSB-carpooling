@@ -113,14 +113,21 @@ export async function loadMatchesFor(userId: string): Promise<MatchView[]> {
   });
 }
 
-// Cold start (§5 completion): colleagues within 8 km who have not finished setting up.
+// Smallest count the cold-start message will show. With one or two, moving your
+// own pin and watching the number change would point at a single colleague.
+export const COLD_START_MIN = 3;
+
+// Cold start (§5 completion): colleagues within 8 km who have not finished setting
+// up. These people have not consented yet, so the distance is measured between
+// approximate cells, never between exact homes, and small counts are reported as 0.
 export async function countNearbyIncomplete(userId: string): Promise<number> {
-  const me = await db.user.findUnique({ where: { id: userId }, select: { orgId: true, homeLat: true, homeLng: true } });
-  if (!me?.homeLat || !me.homeLng) return 0;
+  const me = await db.user.findUnique({ where: { id: userId }, select: { orgId: true, approxLat: true, approxLng: true } });
+  if (me?.approxLat == null || me.approxLng == null) return 0;
   const others = await db.user.findMany({
-    where: { orgId: me.orgId, id: { not: userId }, status: "ACTIVE", onboardingCompletedAt: null, homeLat: { not: null }, homeLng: { not: null } },
-    select: { homeLat: true, homeLng: true },
+    where: { orgId: me.orgId, id: { not: userId }, status: "ACTIVE", onboardingCompletedAt: null, approxLat: { not: null }, approxLng: { not: null } },
+    select: { approxLat: true, approxLng: true },
   });
-  const here = { lat: me.homeLat, lng: me.homeLng };
-  return others.filter((o) => haversineKm(here, { lat: o.homeLat!, lng: o.homeLng! }) <= 8).length;
+  const here = { lat: me.approxLat, lng: me.approxLng };
+  const n = others.filter((o) => haversineKm(here, { lat: o.approxLat!, lng: o.approxLng! }) <= 8).length;
+  return n >= COLD_START_MIN ? n : 0;
 }

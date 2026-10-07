@@ -2,7 +2,7 @@ import { t, fmt } from "@/i18n";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { Alert, Button, Card, Input, PageTitle } from "@/components/ui";
-import { deleteAccountAction, withdrawLocationAction } from "../actions";
+import { deleteAccountAction, giveResearchAction, withdrawLocationAction, withdrawResearchAction } from "../actions";
 import { formatInTimeZone } from "date-fns-tz";
 
 export const metadata = { title: t.settings.privacy };
@@ -13,6 +13,7 @@ export default async function PrivacySettings({ searchParams }: { searchParams: 
   const sp = await searchParams;
   const consents = await db.consent.findMany({ where: { userId: user.id }, orderBy: { acceptedAt: "desc" } });
   const activeLocation = consents.find((c) => c.scope === "LOCATION_SHARING" && !c.withdrawnAt);
+  const activeResearch = consents.find((c) => c.scope === "PILOT_RESEARCH" && !c.withdrawnAt);
   const f = (d: Date) => formatInTimeZone(d, user.org.timezone, "d MMM yyyy");
   return (
     <>
@@ -42,6 +43,13 @@ export default async function PrivacySettings({ searchParams }: { searchParams: 
             </a>
           </p>
         )}
+        {/* Each consent is withdrawn in one tap, the same effort as giving it. */}
+        <form action={activeResearch ? withdrawResearchAction : giveResearchAction} className="mt-3">
+          <Button type="submit" variant="secondary">
+            {activeResearch ? t.onboarding.consent.withdrawResearch : t.onboarding.consent.giveResearch}
+          </Button>
+          <p className="mt-1 text-xs text-muted">{activeResearch ? t.onboarding.consent.withdrawResearchHelp : t.onboarding.consent.giveResearchHelp}</p>
+        </form>
       </Card>
       <Card className="mb-4">
         <h2 className="font-medium">{t.settings.export}</h2>

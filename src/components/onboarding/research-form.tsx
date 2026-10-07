@@ -6,11 +6,11 @@ import { t } from "@/i18n";
 import { Alert, ChoiceGroup, Field, Input, Textarea } from "@/components/ui";
 import { StepActions } from "./shell";
 
-type Props = { initial: Record<string, string | number> };
+type Props = { initial: Record<string, string | number>; returnTo?: string };
 
 const opts = (o: Record<string, string>) => Object.entries(o).map(([value, label]) => ({ value, label }));
 
-export function ResearchForm({ initial }: Props) {
+export function ResearchForm({ initial, returnTo }: Props) {
   const [state, action, pending] = useActionState<StepState, FormData>(saveResearch, null);
   const r = t.onboarding.research;
   const v = (k: string) => (initial[k] != null ? String(initial[k]) : undefined);
@@ -32,7 +32,11 @@ export function ResearchForm({ initial }: Props) {
       <Field label={r.r10} htmlFor="r10" optional>
         <Textarea id="r10" name="r10" rows={3} maxLength={500} defaultValue={v("r10")} />
       </Field>
-      <StepActions pending={pending} />
+      <StepActions pending={pending} returnTo={returnTo} />
+      {/* Optional step: skipping posts the form without validating or storing the answers. */}
+      <button type="submit" name="skip" value="1" formNoValidate disabled={pending} className="mt-3 min-h-11 w-full rounded-full border border-border bg-surface px-5 py-2.5 text-base font-semibold hover:bg-surface-2">
+        {r.skip}
+      </button>
     </form>
   );
 }

@@ -6,8 +6,9 @@ import { Button } from "./ui";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
-// Registers the app-shell service worker and shows an install banner on the
-// second visit (first visits are for finding out whether the app is useful).
+// Registers the app-shell service worker and shows an install banner when the
+// browser offers installation. The only thing kept on the device is the user's
+// own "not now" choice; nothing is counted.
 export function PwaSetup() {
   const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
@@ -16,11 +17,6 @@ export function PwaSetup() {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
-    let visits = 0;
-    try {
-      visits = Number(localStorage.getItem("visits") ?? "0") + 1;
-      localStorage.setItem("visits", String(visits));
-    } catch {}
     const dismissed = (() => {
       try {
         return localStorage.getItem("installDismissed") === "1";
@@ -31,7 +27,7 @@ export function PwaSetup() {
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setPrompt(e as InstallPromptEvent);
-      if (visits >= 2 && !dismissed) setShow(true);
+      if (!dismissed) setShow(true);
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);

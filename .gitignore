@@ -49,3 +49,4 @@ backups/
 test-results/
 playwright-report/
 .next-pilot/
+.next-preview/

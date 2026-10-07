@@ -5,6 +5,10 @@ import type { LatLng } from "../lib/geo/haversine";
 // Minimal rows for integration tests. Everything is created against unit.db.
 export async function resetDb() {
   await db.$transaction([
+    db.report.deleteMany(),
+    db.block.deleteMany(),
+    db.invitation.deleteMany(),
+    db.verificationToken.deleteMany(),
     db.tripParticipant.deleteMany(),
     db.trip.deleteMany(),
     db.message.deleteMany(),
@@ -27,8 +31,9 @@ export async function resetDb() {
   ]);
 }
 
-export async function makeOrg() {
-  const org = await db.organisation.create({ data: { name: "Test", slug: `test-${Date.now()}`, allowedEmailDomains: "example.org", kmRateCents: 40 } });
+let orgSeq = 0;
+export async function makeOrg(domain = "example.org") {
+  const org = await db.organisation.create({ data: { name: "Test", slug: `test-${Date.now()}-${orgSeq++}`, allowedEmailDomains: domain, kmRateCents: 40 } });
   const site = await db.site.create({ data: { orgId: org.id, name: "Campus", address: "", lat: 50.85, lng: 4.35 } });
   return { org, site };
 }

@@ -1,6 +1,13 @@
 import { db } from "../db";
 import { route } from "../geo/provider";
 
+// Cost sharing must stay at or below real running costs: above that it is no
+// longer carpooling but paid transport, with tax and insurance consequences.
+// The school sets the rate (default 40 c/km, a placeholder for the official
+// Belgian kilometre allowance); this ceiling holds even if the setting is wrong.
+export const KM_RATE_CEILING_CENTS = 60;
+export const cappedRate = (cents: number) => Math.max(0, Math.min(cents, KM_RATE_CEILING_CENTS));
+
 export type Tally = { month: string; hidden: boolean; lines: Array<{ from: string; to: string; cents: number }>; names: Record<string, string> };
 
 // §7.6: per DONE trip and passenger IN, contribution = direct km × rate ÷ participants (incl. driver).
@@ -27,7 +34,7 @@ export async function monthlyTally(poolId: string, month: string): Promise<Tally
     for (const p of riders) {
       if (!p.user || p.user.homeLat == null || p.user.homeLng == null) continue;
       const r = await route([{ lat: p.user.homeLat, lng: p.user.homeLng }, site]);
-      const cents = Math.round(((r.distanceM / 1000) * pool.org.kmRateCents) / n);
+      const cents = Math.round(((r.distanceM / 1000) * cappedRate(pool.org.kmRateCents)) / n);
       const key = `${p.userId}|${trip.driverId}`;
       net.set(key, (net.get(key) ?? 0) + cents);
       if (!names[p.userId!]) names[p.userId!] = p.user.name;

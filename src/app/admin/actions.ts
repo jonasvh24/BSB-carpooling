@@ -15,13 +15,16 @@ import { DATE_RE, HM_RE } from "@/lib/time";
 import { sendMail } from "@/lib/mail";
 import { renderEmail } from "@/lib/notify";
 import { env } from "@/lib/env";
+import { KM_RATE_CEILING_CENTS } from "@/lib/pools/tally";
+import { SuspendReason } from "@/lib/enums";
+import { RETENTION } from "@/lib/retention";
 
 // Every admin action is scoped to the admin's own organisation and audited (§8.2).
 
 export async function recomputeAction() {
   const admin = await requireAdmin();
   const r = await recomputeOrg(admin.orgId);
-  await audit(admin.id, "RECOMPUTE", "Organisation", admin.orgId, { matches: r.matches, ms: r.ms });
+  await audit(admin.orgId, admin.id, "RECOMPUTE", "Organisation", admin.orgId, { matches: r.matches, ms: r.ms });
   revalidatePath("/admin");
   redirect(`/admin?recomputed=${r.ms}`);
 }
@@ -40,10 +43,11 @@ export async function inviteAction(formData: FormData) {
     await db.invitation.upsert({ where: { email }, create: { email, orgId: admin.orgId, invitedBy: admin.id }, update: {} });
     const url = `${env.AUTH_URL.replace(/\/$/, "")}/signin`;
     const content = { title: fmt(t.email.inviteSubject, { org: admin.org.name, app: t.app.name }), body: fmt(t.email.inviteBody, { org: admin.org.name, app: t.app.name }) };
-    await sendMail({ to: email, subject: content.title, ...renderEmail(content, url) }).catch(() => {});
+    const footer = fmt(t.email.inviteFooter, { org: admin.org.name, days: RETENTION.invitationDays, contact: env.PRIVACY_CONTACT_EMAIL || t.legal.contactPlaceholder });
+    await sendMail({ to: email, subject: content.title, ...renderEmail(content, url, footer) }).catch(() => {});
     n++;
   }
-  await audit(admin.id, "INVITE", "Organisation", admin.orgId, { count: n });
+  await audit(admin.orgId, admin.id, "INVITE", "Organisation", admin.orgId, { count: n });
   revalidatePath("/admin/users");
   redirect(`/admin/users?invited=${n}`);
 }
@@ -54,9 +58,19 @@ export async function suspendAction(formData: FormData) {
   const status = formData.get("status") === "ACTIVE" ? "ACTIVE" : "SUSPENDED";
   const user = await db.user.findFirst({ where: { id, orgId: admin.orgId } });
   if (!user || user.id === admin.id) return;
+  const reason = SuspendReason.safeParse(formData.get("reason"));
+  // A suspension always carries a reason, and the person is told it and how to contest it.
+  if (status === "SUSPENDED" && !reason.success) return;
   await db.user.update({ where: { id }, data: { status } });
-  if (status === "SUSPENDED") await db.match.deleteMany({ where: { OR: [{ driverId: id }, { passengerId: id }], status: { not: "CONVERTED" } } });
-  await audit(admin.id, status === "ACTIVE" ? "REINSTATE" : "SUSPEND", "User", id);
+  if (status === "SUSPENDED" && reason.success) {
+    await db.match.deleteMany({ where: { OR: [{ driverId: id }, { passengerId: id }], status: { not: "CONVERTED" } } });
+    const content = {
+      title: fmt(t.email.suspendSubject, { app: t.app.name }),
+      body: fmt(t.email.suspendBody, { app: t.app.name, org: admin.org.name, reason: t.admin.suspendReasons[reason.data], contact: env.PRIVACY_CONTACT_EMAIL || t.legal.contactPlaceholder }),
+    };
+    await sendMail({ to: user.email, subject: content.title, ...renderEmail(content, `${env.AUTH_URL.replace(/\/$/, "")}/terms`, t.email.suspendFooter) }).catch(() => {});
+  }
+  await audit(admin.orgId, admin.id, status === "ACTIVE" ? "REINSTATE" : "SUSPEND", "User", id, reason.success ? { reason: reason.data } : undefined);
   revalidatePath("/admin/users");
 }
 
@@ -66,7 +80,7 @@ export async function deleteUserAction(formData: FormData) {
   const user = await db.user.findFirst({ where: { id, orgId: admin.orgId } });
   if (!user || user.id === admin.id) return;
   await deleteUserCascade(id);
-  await audit(admin.id, "DELETE_USER", "User", id);
+  await audit(admin.orgId, admin.id, "DELETE_USER", "User", id);
   revalidatePath("/admin/users");
 }
 
@@ -77,7 +91,7 @@ export async function setRoleAction(formData: FormData) {
   const user = await db.user.findFirst({ where: { id, orgId: admin.orgId } });
   if (!user || user.id === admin.id) return;
   await db.user.update({ where: { id }, data: { role } });
-  await audit(admin.id, "SET_ROLE", "User", id, { role });
+  await audit(admin.orgId, admin.id, "SET_ROLE", "User", id, { role });
   revalidatePath("/admin/users");
 }
 
@@ -113,10 +127,10 @@ export async function saveSiteAction(formData: FormData) {
     const site = await db.site.findFirst({ where: { id, orgId: admin.orgId } });
     if (!site) return;
     await db.site.update({ where: { id }, data: row });
-    await audit(admin.id, "UPDATE_SITE", "Site", id, row);
+    await audit(admin.orgId, admin.id, "UPDATE_SITE", "Site", id, row);
   } else {
     const site = await db.site.create({ data: { ...row, orgId: admin.orgId } });
-    await audit(admin.id, "CREATE_SITE", "Site", site.id, row);
+    await audit(admin.orgId, admin.id, "CREATE_SITE", "Site", site.id, row);
   }
   revalidatePath("/admin/sites");
 }
@@ -135,7 +149,7 @@ export async function addHolidayAction(formData: FormData) {
     d = addDaysIso(d, 1);
     n++;
   }
-  await audit(admin.id, "ADD_HOLIDAY", "Organisation", admin.orgId, { from: from.data, to: to.data, label });
+  await audit(admin.orgId, admin.id, "ADD_HOLIDAY", "Organisation", admin.orgId, { from: from.data, to: to.data, label });
   revalidatePath("/admin/holidays");
 }
 
@@ -143,7 +157,7 @@ export async function removeHolidayAction(formData: FormData) {
   const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
   await db.nonWorkingDay.deleteMany({ where: { id, orgId: admin.orgId } });
-  await audit(admin.id, "REMOVE_HOLIDAY", "NonWorkingDay", id);
+  await audit(admin.orgId, admin.id, "REMOVE_HOLIDAY", "NonWorkingDay", id);
   revalidatePath("/admin/holidays");
 }
 
@@ -152,7 +166,7 @@ const orgSchema = z.object({
   allowedEmailDomains: z.string().transform((s) => s.split(/[\s,;]+/).map((x) => x.trim().toLowerCase()).filter(Boolean).join(",")),
   timezone: z.string().trim().min(1),
   headcount: z.coerce.number().int().min(1),
-  kmRateCents: z.coerce.number().int().min(0).max(500),
+  kmRateCents: z.coerce.number().int().min(0).max(KM_RATE_CEILING_CENTS),
   co2GramsPerKm: z.coerce.number().int().min(0).max(1000),
   matchDetourThresholdMin: z.coerce.number().int().min(1).max(60),
   digestTime: z.string().regex(HM_RE),
@@ -168,7 +182,7 @@ export async function saveOrgAction(formData: FormData) {
     where: { id: admin.orgId },
     data: { ...parsed.data, ...(th.success ? { goNoGoThresholds: JSON.stringify(th.data) } : {}) },
   });
-  await audit(admin.id, "UPDATE_ORG", "Organisation", admin.orgId, parsed.data);
+  await audit(admin.orgId, admin.id, "UPDATE_ORG", "Organisation", admin.orgId, parsed.data);
   revalidatePath("/admin");
   revalidatePath("/admin/settings");
   redirect("/admin/settings?saved=1");
@@ -180,19 +194,23 @@ export async function resolveReportAction(formData: FormData) {
   const report = await db.report.findFirst({ where: { id, reporter: { orgId: admin.orgId } } });
   if (!report) return;
   await db.report.update({ where: { id }, data: { status: "RESOLVED", resolvedAt: new Date(), resolvedById: admin.id } });
-  await audit(admin.id, "RESOLVE_REPORT", "Report", id);
+  await audit(admin.orgId, admin.id, "RESOLVE_REPORT", "Report", id);
   revalidatePath("/admin/reports");
 }
 
 export async function sendSurveyAction(formData: FormData) {
   const admin = await requireAdmin();
   const key = formData.get("key") === "EXIT" ? "EXIT" : "WEEK4";
-  const users = await db.user.findMany({ where: { orgId: admin.orgId, status: "ACTIVE", onboardingCompletedAt: { not: null } }, select: { id: true } });
+  // The surveys are research: only people with an open research consent are asked.
+  const users = await db.user.findMany({
+    where: { orgId: admin.orgId, status: "ACTIVE", onboardingCompletedAt: { not: null }, consents: { some: { scope: "PILOT_RESEARCH", withdrawnAt: null } } },
+    select: { id: true },
+  });
   const name = key === "EXIT" ? t.survey.exitTitle : t.survey.week4Title;
   for (const u of users) {
     await notify(u.id, "SURVEY", { title: t.notifications.surveyTitle, body: fmt(t.notifications.surveyBody, { name }), link: `/survey/${key.toLowerCase()}` });
   }
-  await audit(admin.id, "SEND_SURVEY", "Organisation", admin.orgId, { key, count: users.length });
+  await audit(admin.orgId, admin.id, "SEND_SURVEY", "Organisation", admin.orgId, { key, count: users.length });
   revalidatePath("/admin/surveys");
   redirect(`/admin/surveys?sent=${users.length}`);
 }

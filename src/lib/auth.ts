@@ -1,5 +1,7 @@
 import NextAuth from "next-auth";
 import Nodemailer from "next-auth/providers/nodemailer";
+import Credentials from "next-auth/providers/credentials";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 import { db } from "./db";
@@ -57,6 +59,32 @@ function orgAwareAdapter(): Adapter {
   };
 }
 
+// Compare in constant time, on hashes so the lengths always match.
+function sameSecret(a: string, b: string): boolean {
+  const h = (x: string) => createHash("sha256").update(x).digest();
+  return timingSafeEqual(h(a), h(b));
+}
+
+// The owner account (OWNER_EMAIL / OWNER_PASSWORD in .env): an administrator who
+// signs in with a password, for someone without a mailbox on the school's domain.
+// Returns the user row, created on first use, or null when the pair is wrong.
+export async function ownerLogin(email: string, password: string) {
+  if (!env.OWNER_EMAIL || !env.OWNER_PASSWORD) return null;
+  const okEmail = sameSecret(email.trim().toLowerCase(), env.OWNER_EMAIL);
+  const okPassword = sameSecret(password, env.OWNER_PASSWORD);
+  if (!okEmail || !okPassword) return null;
+  const existing = await db.user.findUnique({ where: { email: env.OWNER_EMAIL } });
+  if (existing) {
+    if (existing.role !== "ADMIN" || existing.status !== "ACTIVE") {
+      return db.user.update({ where: { id: existing.id }, data: { role: "ADMIN", status: "ACTIVE" } });
+    }
+    return existing;
+  }
+  const org = await db.organisation.findFirst({ orderBy: { createdAt: "asc" } });
+  if (!org) return null;
+  return db.user.create({ data: { email: env.OWNER_EMAIL, emailVerified: new Date(), orgId: org.id, role: "ADMIN", name: env.OWNER_EMAIL.split("@")[0] } });
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: orgAwareAdapter(),
@@ -72,6 +100,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           text: fmt(t.auth.emailBody, { app: t.app.name, url }),
           html: `<p>${fmt(t.auth.emailBody, { app: t.app.name, url }).replace(url, `<a href="${url}">${url}</a>`).replace(/\n/g, "<br>")}</p>`,
         });
+      },
+    }),
+    Credentials({
+      credentials: { email: {}, password: {} },
+      async authorize(c) {
+        const user = await ownerLogin(String(c?.email ?? ""), String(c?.password ?? ""));
+        return user ? { id: user.id, email: user.email, name: user.name } : null;
       },
     }),
   ],

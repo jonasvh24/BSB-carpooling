@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "../db";
 import { env } from "../env";
-import type { LatLng } from "./haversine";
+import { ptKey, type LatLng } from "./haversine";
 import { withFallback } from "./with-fallback";
 import type { RouteResult, Router } from "../matching/types";
 
@@ -11,7 +11,6 @@ import type { RouteResult, Router } from "../matching/types";
 export type GeocodeHit = { label: string; lat: number; lng: number };
 
 const round = (n: number) => n.toFixed(4);
-const ptKey = (p: LatLng) => `${round(p.lat)},${round(p.lng)}`;
 
 async function cached<T>(kind: "GEOCODE" | "REVERSE" | "ROUTE", key: string, schema: z.ZodType<T>, fetcher: () => Promise<T>): Promise<T> {
   const fullKey = `${kind}:${key}`;
@@ -101,6 +100,16 @@ const RouteSchema = z.object({
 });
 export type RouteWithGeometry = z.infer<typeof RouteSchema>;
 
+// Optional spacing of routing requests (OSRM_MIN_INTERVAL_MS), same pattern as Nominatim.
+let osrmGate: Promise<void> = Promise.resolve();
+function spacedOsrm<T>(fn: () => Promise<T>): Promise<T> {
+  if (env.OSRM_MIN_INTERVAL_MS <= 0) return fn();
+  const wait = () => new Promise<void>((r) => setTimeout(r, env.OSRM_MIN_INTERVAL_MS));
+  const run = osrmGate.then(fn);
+  osrmGate = run.then(wait, wait);
+  return run;
+}
+
 async function osrm(points: LatLng[], geometry: boolean): Promise<RouteWithGeometry> {
   const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
   const url = new URL(`/route/v1/driving/${coords}`, env.OSRM_URL);
@@ -127,14 +136,14 @@ async function osrm(points: LatLng[], geometry: boolean): Promise<RouteWithGeome
 // Durations only; cached; falls back to the haversine heuristic when OSRM is unavailable.
 export const route: Router = withFallback(
   (points: LatLng[]): Promise<RouteResult> =>
-    cached("ROUTE", points.map(ptKey).join(";"), RouteSchema, () => osrm(points, false)),
+    cached("ROUTE", points.map(ptKey).join(";"), RouteSchema, () => spacedOsrm(() => osrm(points, false))),
   (err) => console.warn(`[geo] routing failed, using fallback: ${(err as Error).message}`),
 );
 
 // Same, with the polyline for drawing on the pool map. Falls back to straight lines.
 export async function routeGeometry(points: LatLng[]): Promise<RouteWithGeometry> {
   try {
-    return await cached("ROUTE", `geom:${points.map(ptKey).join(";")}`, RouteSchema, () => osrm(points, true));
+    return await cached("ROUTE", `geom:${points.map(ptKey).join(";")}`, RouteSchema, () => spacedOsrm(() => osrm(points, true)));
   } catch (err) {
     console.warn(`[geo] route geometry failed: ${(err as Error).message}`);
     const r = await route(points);

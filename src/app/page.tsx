@@ -12,7 +12,7 @@ export default async function Home() {
     <main id="main" className="min-h-dvh">
       <section className="hero-navy px-5 pb-28 pt-8">
         <div className="mx-auto max-w-3xl">
-          <BsbLogo tone="white" full className="h-16 w-auto sm:h-20" />
+          <BsbLogo className="h-20 w-auto sm:h-24" />
           <p className="mt-10 text-sm font-semibold uppercase tracking-[0.18em] text-gold">
             {t.app.name} · {t.home.eyebrow}
           </p>

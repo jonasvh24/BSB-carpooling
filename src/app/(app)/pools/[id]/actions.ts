@@ -58,7 +58,7 @@ export async function leaveAction(formData: FormData) {
   redirect("/pools");
 }
 
-const mpSchema = z.object({ userId: z.string().min(1), lat: z.coerce.number(), lng: z.coerce.number(), label: z.string().trim().min(1).max(60) });
+const mpSchema = z.object({ userId: z.string().min(1), lat: z.coerce.number().min(-90).max(90), lng: z.coerce.number().min(-180).max(180), label: z.string().trim().min(1).max(60) });
 
 export async function meetingPointAction(formData: FormData) {
   const user = await requireUser();

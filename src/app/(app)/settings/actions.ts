@@ -6,7 +6,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { signOut } from "@/lib/auth";
-import { deleteUserCascade } from "@/lib/gdpr";
+import { deleteUserCascade, withdrawResearch } from "@/lib/gdpr";
+import { withdrawLocation } from "@/lib/consent";
 import { audit } from "@/lib/admin/audit";
 import { recomputeUser } from "@/lib/matching-service";
 import { rateLimit } from "@/lib/rate-limit";
@@ -20,17 +21,28 @@ export async function setMuteAction(formData: FormData) {
 
 export async function withdrawLocationAction() {
   const user = await requireUser();
-  await db.consent.updateMany({ where: { userId: user.id, scope: "LOCATION_SHARING", withdrawnAt: null }, data: { withdrawnAt: new Date() } });
-  // §9.5: hidden from matching until re-consented.
-  await db.match.deleteMany({ where: { OR: [{ driverId: user.id }, { passengerId: user.id }], status: { not: "CONVERTED" } } });
-  await audit(user.id, "WITHDRAW_CONSENT", "User", user.id, { scope: "LOCATION_SHARING" });
+  await withdrawLocation(user.id);
+  revalidatePath("/settings/privacy");
+}
+
+export async function withdrawResearchAction() {
+  const user = await requireUser();
+  await withdrawResearch(user.id);
+  revalidatePath("/settings/privacy");
+}
+
+export async function giveResearchAction() {
+  const user = await requireUser();
+  const open = await db.consent.findFirst({ where: { userId: user.id, scope: "PILOT_RESEARCH", withdrawnAt: null } });
+  if (!open) await db.consent.create({ data: { userId: user.id, scope: "PILOT_RESEARCH", policyVersion: user.org.policyVersion } });
   revalidatePath("/settings/privacy");
 }
 
 export async function deleteAccountAction(formData: FormData) {
   const user = await requireUser();
   if (String(formData.get("confirm") ?? "") !== "DELETE") redirect("/settings/privacy?error=confirm");
-  await audit(null, "SELF_DELETE", "User", user.id);
+  // Counted, not attributed: no user id is written.
+  await audit(user.orgId, null, "SELF_DELETE", "User", "self");
   await deleteUserCascade(user.id);
   await signOut({ redirectTo: "/?deleted=1" });
 }
@@ -57,7 +69,8 @@ export async function reportAction(formData: FormData) {
   const d = parsed.data;
   const target = await db.user.findFirst({ where: { id: d.reportedUserId, orgId: user.orgId } });
   if (!target || target.id === user.id) return;
-  await db.report.create({ data: { reporterId: user.id, reportedUserId: target.id, poolId: d.poolId || null, reason: d.reason, details: d.details || null } });
+  const pool = d.poolId ? await db.poolMember.findFirst({ where: { poolId: d.poolId, userId: user.id }, select: { poolId: true } }) : null;
+  await db.report.create({ data: { reporterId: user.id, reportedUserId: target.id, poolId: pool?.poolId ?? null, reason: d.reason, details: d.details || null } });
   if (d.block) await blockUser(user.id, target.id);
   redirect("/settings/report?sent=1");
 }

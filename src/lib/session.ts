@@ -27,14 +27,14 @@ export async function requireAdmin(): Promise<CurrentUser> {
   return user;
 }
 
-// Has the user consented to the organisation's current policy version for both scopes?
+// Has the user consented to location sharing under the organisation's current
+// policy version? Research consent is optional and never gates the app.
 export async function hasCurrentConsent(user: CurrentUser): Promise<boolean> {
-  const rows = await db.consent.findMany({
-    where: { userId: user.id, policyVersion: user.org.policyVersion, withdrawnAt: null },
-    select: { scope: true },
+  const row = await db.consent.findFirst({
+    where: { userId: user.id, scope: "LOCATION_SHARING", policyVersion: user.org.policyVersion, withdrawnAt: null },
+    select: { id: true },
   });
-  const scopes = new Set(rows.map((r) => r.scope));
-  return scopes.has("LOCATION_SHARING") && scopes.has("PILOT_RESEARCH");
+  return Boolean(row);
 }
 
 // Fire-and-forget activity stamp, throttled to once per 10 minutes.

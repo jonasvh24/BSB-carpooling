@@ -78,21 +78,22 @@ describe("admin metrics (§8.2)", () => {
     expect(m.impact.co2Kg).toBe(1.3); // 10 km × 130 g
     expect(m.impact.moneyEur).toBe(4); // 10 km × 40 c
     expect(m.impact.parkingFreed).toBe(1); // p1 (car alone); p2 never rode
+    // Three respondents are fewer than MIN_GROUP: only the count is reported
+    // (the aggregates are tested with a larger group in legal.db.test.ts).
     expect(m.survey.n).toBe(3);
-    expect(m.survey.r1).toEqual({ CAR_ALONE: 2, BIKE: 1 });
-    expect(m.survey.r8).toEqual({ YES: 3 });
-    expect(m.values.commercial).toBeCloseTo(1);
-    expect(m.week4).toEqual({ n: 1, recommend: 1 });
+    expect(m.survey.suppressed).toBe(true);
+    expect(m.survey.r1).toEqual({});
+    expect(m.survey.r10).toEqual([]);
+    expect(m.values.commercial).toBe(0);
+    expect(m.week4).toEqual({ n: 1, recommend: 0 });
     const byKey = Object.fromEntries(m.goNoGo.map((g) => [g.key, g.ok]));
-    expect(byKey).toEqual({ signupRate: true, onboarding: false, matchable: true, poolConversion: true, poolSurvival: false, tripCadence: false, cancellation: false, recommend: true, commercial: true });
+    expect(byKey).toEqual({ signupRate: true, onboarding: false, matchable: true, poolConversion: true, poolSurvival: false, tripCadence: false, cancellation: false, recommend: false, commercial: false });
   });
 
-  it("heat map only shows cells with at least two users", async () => {
-    const cells = await heatCells(orgId);
-    // d (10 km), p1 (5 km) and p2 (6 km, 0.5 km east): no two homes share a 1 km cell;
-    // p1 and p2 share a 3 km cell as singletons.
-    expect(cells.every((c) => c.count >= 2)).toBe(true);
-    expect(cells.some((c) => c.coarse && c.count === 2)).toBe(true);
+  it("heat map shows nothing when no cell reaches the minimum", async () => {
+    // d (10 km), p1 (5 km) and p2 (6 km, 0.5 km east): no three homes share a cell,
+    // fine or coarse, so an administrator sees no cell at all.
+    expect(await heatCells(orgId)).toEqual([]);
   });
 
   it("deleting a user removes their rows and anonymises trip history", async () => {
@@ -113,7 +114,9 @@ describe("admin metrics (§8.2)", () => {
     expect(anon.every((a) => a.anonymisedId?.startsWith("deleted-"))).toBe(true);
     // Deleting the driver ends their pool and keeps DONE trips.
     await deleteUserCascade(driverId);
-    expect((await db.pool.findFirstOrThrow({ where: { name: "Test pool" } })).status).toBe("ENDED");
+    // Their pool ends and loses the name that was chosen while they drove it.
+    expect(await db.pool.count({ where: { name: "Test pool" } })).toBe(0);
+    expect(await db.pool.count({ where: { status: "ENDED", name: "Morning carpool (ended)" } })).toBe(1);
     expect(await db.trip.count({ where: { status: "DONE" } })).toBe(2);
     expect(await db.trip.count({ where: { driverId: null } })).toBe(4);
   });

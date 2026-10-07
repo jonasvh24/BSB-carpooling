@@ -21,6 +21,8 @@ export const authConfig = {
         path === "/" ||
         path.startsWith("/signin") ||
         path.startsWith("/privacy") ||
+        path.startsWith("/terms") ||
+        path.startsWith("/offline") ||
         path.startsWith("/api/auth") ||
         path.startsWith("/dev/") ||
         path.startsWith("/invite");

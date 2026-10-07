@@ -13,7 +13,7 @@ export function Button({ variant = "primary", full, className, ...props }: Butto
   const styles = {
     primary: "bg-accent text-accent-text shadow-sm hover:bg-accent-strong",
     secondary: "bg-surface text-text border border-border hover:bg-surface-2",
-    danger: "bg-danger text-white hover:opacity-90",
+    danger: "bg-danger text-on-danger hover:opacity-90",
     ghost: "bg-transparent text-text hover:bg-surface-2",
   }[variant];
   return <button className={cx(base, styles, full && "w-full", className)} {...props} />;

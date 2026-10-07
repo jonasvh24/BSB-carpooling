@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { confirmTrip, driverCancel, optOutTrip, verifyTrip } from "@/lib/pools/daily";
-import { acceptLift } from "@/lib/pools/lifts";
+import { acceptLift, liftsFor } from "@/lib/pools/lifts";
 import { DATE_RE } from "@/lib/time";
 
 function refresh(tripId: string) {
@@ -66,6 +66,12 @@ export async function acceptLiftAction(formData: FormData) {
   });
   if (!parsed.success) return;
   const d = parsed.data;
+  // The form fields are only a choice among the lifts the app offers this user
+  // for that date; anything else (another site, another organisation's driver) is refused.
+  const site = await db.site.findFirst({ where: { id: d.siteId, orgId: user.orgId }, select: { id: true } });
+  if (!site) return;
+  const offered = await liftsFor(user.id, d.date, d.direction, d.siteId);
+  if (!offered.some((l) => l.driverId === d.driverId)) return;
   const tripId = await acceptLift(user.id, d.driverId, d.date, d.direction, d.siteId);
   revalidatePath("/pools");
   if (tripId) redirect(`/trips/${tripId}`);

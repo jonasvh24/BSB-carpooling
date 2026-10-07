@@ -22,7 +22,7 @@ export function MeetingPointForm({ poolId, member }: { poolId: string; member: {
   return (
     <form action={meetingPointAction} className="mt-2 rounded-lg border border-border bg-surface-2 p-3">
       <p className="mb-2 text-sm text-muted">{t.pools.meetingPointHelp}</p>
-      <HomeMap lat={p.lat} lng={p.lng} onMove={setP} ariaLabel={t.pools.meetingPoint} />
+      <HomeMap lat={p.lat} lng={p.lng} onMove={setP} ariaLabel={t.pools.meetingPoint} pinLabel={t.pools.meetingPointPin} />
       <input type="hidden" name="poolId" value={poolId} />
       <input type="hidden" name="userId" value={member.userId} />
       <input type="hidden" name="lat" value={p.lat} />

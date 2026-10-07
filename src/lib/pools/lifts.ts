@@ -68,7 +68,8 @@ export async function acceptLift(passengerId: string, driverId: string, date: st
         direction,
         name: fmt(t.pools.nameFormat, { direction: direction === "AM" ? t.matches.am : t.matches.pm, driver: driver.name }),
         status: "FORMING",
-        members: { create: { userId: driverId, memberRole: "DRIVER", days: "", stopOrder: 0 } },
+        // The driver is "in" on the day of the lift, otherwise no trip can be planned for it.
+        members: { create: { userId: driverId, memberRole: "DRIVER", days: String(isoWeekday(date)), stopOrder: 0 } },
       },
     });
   }

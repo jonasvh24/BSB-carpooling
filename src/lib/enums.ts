@@ -33,6 +33,7 @@ export const TripStatus = z.enum(["PLANNED", "CONFIRMED", "CANCELLED", "DONE", "
 export const ParticipantStatus = z.enum(["IN", "OUT", "NO_SHOW", "UNKNOWN"]);
 export const ReportStatus = z.enum(["OPEN", "RESOLVED"]);
 export const GeoCacheKind = z.enum(["GEOCODE", "REVERSE", "ROUTE"]);
+export const SuspendReason = z.enum(["CONDUCT", "SAFETY", "NOT_STAFF", "OTHER"]);
 export const Language = z.enum(["nl", "fr", "en", "other"]);
 
 export type Role = z.infer<typeof Role>;

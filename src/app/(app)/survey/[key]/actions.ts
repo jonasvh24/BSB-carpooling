@@ -19,6 +19,9 @@ export async function submitSurvey(formData: FormData) {
   const key = formData.get("key") === "EXIT" ? "EXIT" : "WEEK4";
   const parsed = schema.safeParse(Object.fromEntries(["recommend", "worked", "didnt", "oneChange", "keep", "pay"].map((k) => [k, formData.get(k) ?? ""])));
   if (!parsed.success) return;
+  const consent = await db.consent.findFirst({ where: { userId: user.id, scope: "PILOT_RESEARCH", withdrawnAt: null }, select: { id: true } });
+  const already = await db.surveyResponse.findFirst({ where: { userId: user.id, surveyKey: key }, select: { id: true } });
+  if (!consent || already) redirect(`/survey/${key.toLowerCase()}`);
   const trips = await db.tripParticipant.count({ where: { userId: user.id, status: "IN", trip: { status: "DONE" } } });
   await db.surveyResponse.create({ data: { userId: user.id, surveyKey: key, answers: JSON.stringify({ ...parsed.data, tripsSoFar: trips }) } });
   redirect(`/survey/${key.toLowerCase()}?done=1`);

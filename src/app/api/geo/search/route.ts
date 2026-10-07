@@ -4,11 +4,14 @@ import { geocode } from "@/lib/geo/provider";
 import { getCurrentUser } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 
-export async function GET(req: Request) {
+// POST, not GET: the typed address must not end up in URLs, which servers, tunnels
+// and proxies log.
+export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return new NextResponse(null, { status: 401 });
   if (!rateLimit(`geo:${user.id}`, 60, 60_000)) return new NextResponse(null, { status: 429 });
-  const q = new URL(req.url).searchParams.get("q") ?? "";
+  const body = (await req.json().catch(() => ({}))) as { q?: unknown };
+  const q = typeof body.q === "string" ? body.q.slice(0, 200) : "";
   const site = await db.site.findFirst({ where: { orgId: user.orgId, active: true }, select: { lat: true, lng: true } });
   try {
     const hits = await geocode(q, site ?? undefined);

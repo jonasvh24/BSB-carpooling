@@ -1,7 +1,7 @@
 import { t, fmt } from "@/i18n";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
-import { computeMetrics, heatCells } from "@/lib/admin/metrics";
+import { computeMetrics, heatCells, MIN_GROUP } from "@/lib/admin/metrics";
 import { Alert, Button, Card, PageTitle } from "@/components/ui";
 import { BarChart } from "@/components/bar-chart";
 import { HeatMapClient } from "@/components/heat-map-client";
@@ -121,6 +121,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         <h2 id="survey" className="mb-2 text-lg font-bold">
           {t.admin.ui.surveyHeading} · n = {m.survey.n}
         </h2>
+        {m.survey.suppressed && <Alert>{fmt(t.admin.ui.suppressed, { min: MIN_GROUP })}</Alert>}
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <BarChart title={r.r1} data={m.survey.r1} labels={r.r1o} />
           <BarChart title={`${r.r2} · median ${m.survey.r2.median}`} data={m.survey.r2.buckets} />
@@ -154,7 +155,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           {t.admin.heatmap}
         </h2>
         <p className="mb-2 text-sm text-muted">{t.admin.heatmapHelp}</p>
-        {site && <HeatMapClient cells={cells} site={{ lat: site.lat, lng: site.lng, name: site.name }} />}
+        {site && <HeatMapClient cells={cells} site={{ lat: site.lat, lng: site.lng, name: site.name }} ariaLabel={t.admin.heatmap} labels={{ cell: t.admin.ui.heatCell, coarse: t.admin.ui.heatCellCoarse }} />}
       </section>
     </>
   );

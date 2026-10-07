@@ -3,7 +3,9 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { AuthError } from "next-auth";
 import { signIn, resolveOrgForEmail } from "@/lib/auth";
+import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -26,5 +28,27 @@ export async function requestSignIn(_prev: SignInState, formData: FormData): Pro
   if (!existing && !(await resolveOrgForEmail(email))) return { error: "notAllowed" };
 
   await signIn("nodemailer", { email, redirect: false });
-  redirect(`/signin/sent?email=${encodeURIComponent(email)}`);
+  // No address in the URL: URLs are logged by servers and tunnels.
+  redirect("/signin/sent");
+}
+
+export type OwnerState = { error?: "wrong" | "rateLimited" } | null;
+
+// Password sign-in for the owner account only. Attempts are rationed per
+// network address and overall, because the password may be short.
+export async function ownerSignIn(_prev: OwnerState, formData: FormData): Promise<OwnerState> {
+  if (!env.OWNER_EMAIL || !env.OWNER_PASSWORD) return { error: "wrong" };
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  if (!rateLimit(`owner:${ip}`, 5, 15 * 60 * 1000) || !rateLimit("owner:all", 20, 15 * 60 * 1000)) return { error: "rateLimited" };
+  try {
+    await signIn("credentials", { email: String(formData.get("email") ?? ""), password: String(formData.get("password") ?? ""), redirectTo: "/admin" });
+  } catch (err) {
+    if (err instanceof AuthError) return { error: "wrong" };
+    throw err; // the redirect on success
+  }
+  return null;
+}
+
+export async function ownerLoginEnabled(): Promise<boolean> {
+  return Boolean(env.OWNER_EMAIL && env.OWNER_PASSWORD);
 }

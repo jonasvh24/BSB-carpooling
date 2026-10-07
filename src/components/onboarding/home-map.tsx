@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { createMap } from "../leaflet-base";
 
 const pin = L.divIcon({
   className: "",
@@ -12,45 +12,53 @@ const pin = L.divIcon({
   iconAnchor: [11, 22],
 });
 
-function Recenter({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView([lat, lng], Math.max(map.getZoom(), 16));
-  }, [lat, lng, map]);
-  return null;
-}
-
+// A map with one draggable pin. The address search next to it is the keyboard
+// route to the same result; the pin is the pointer route.
 export default function HomeMap({
   lat,
   lng,
   onMove,
   ariaLabel,
+  pinLabel,
 }: {
   lat: number;
   lng: number;
   onMove: (p: { lat: number; lng: number }) => void;
   ariaLabel: string;
+  pinLabel: string;
 }) {
-  return (
-    <div className="h-64 w-full overflow-hidden rounded-xl border border-border" role="img" aria-label={ariaLabel}>
-      <MapContainer center={[lat, lng]} zoom={16} scrollWheelZoom={false} className="h-full w-full">
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker
-          position={[lat, lng]}
-          icon={pin}
-          draggable
-          eventHandlers={{
-            dragend: (e) => {
-              const p = (e.target as L.Marker).getLatLng();
-              onMove({ lat: p.lat, lng: p.lng });
-            },
-          }}
-        />
-        <Recenter lat={lat} lng={lng} />
-      </MapContainer>
-    </div>
-  );
+  const el = useRef<HTMLDivElement>(null);
+  const map = useRef<L.Map | null>(null);
+  const marker = useRef<L.Marker | null>(null);
+  const moved = useRef(onMove);
+  useEffect(() => {
+    moved.current = onMove;
+  }, [onMove]);
+
+  useEffect(() => {
+    if (!el.current) return;
+    const m = createMap(el.current, { center: [lat, lng], zoom: 16 });
+    const mk = L.marker([lat, lng], { icon: pin, draggable: true, title: pinLabel, alt: pinLabel }).addTo(m);
+    mk.on("dragend", () => {
+      const p = mk.getLatLng();
+      moved.current({ lat: p.lat, lng: p.lng });
+    });
+    map.current = m;
+    marker.current = mk;
+    return () => {
+      m.remove();
+      map.current = null;
+      marker.current = null;
+    };
+    // Created once; position changes are applied by the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!map.current || !marker.current) return;
+    marker.current.setLatLng([lat, lng]);
+    map.current.setView([lat, lng], Math.max(map.current.getZoom(), 16));
+  }, [lat, lng]);
+
+  return <div ref={el} role="group" aria-label={ariaLabel} className="h-64 w-full overflow-hidden rounded-xl border border-border" />;
 }

@@ -9,8 +9,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminAudit() {
   const admin = await requireAdmin();
-  const rows = await db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
-  const actors = await db.user.findMany({ where: { id: { in: rows.map((r) => r.actorId).filter((x): x is string => Boolean(x)) } }, select: { id: true, name: true, email: true } });
+  // Scoped to the organisation. Rows without an organisation (the per-user
+  // "good trip" marks) are not administrative actions and never appear here.
+  const rows = await db.auditLog.findMany({ where: { orgId: admin.orgId }, orderBy: { createdAt: "desc" }, take: 200 });
+  const actors = await db.user.findMany({ where: { orgId: admin.orgId, id: { in: rows.map((r) => r.actorId).filter((x): x is string => Boolean(x)) } }, select: { id: true, name: true, email: true } });
   const nameOf = (id: string | null) => (id ? (actors.find((a) => a.id === id)?.email ?? id) : t.admin.ui.system);
   return (
     <>

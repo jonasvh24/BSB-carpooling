@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { t } from "@/i18n";
 import { db } from "@/lib/db";
@@ -17,6 +18,20 @@ export default async function SurveyPage({ params, searchParams }: { params: Pro
   const existing = await db.surveyResponse.findFirst({ where: { userId: user.id, surveyKey } });
   const trips = await db.tripParticipant.count({ where: { userId: user.id, status: "IN", trip: { status: "DONE" } } });
   const title = surveyKey === "EXIT" ? t.survey.exitTitle : t.survey.week4Title;
+  const consent = await db.consent.findFirst({ where: { userId: user.id, scope: "PILOT_RESEARCH", withdrawnAt: null }, select: { id: true } });
+  if (!consent) {
+    return (
+      <>
+        <PageTitle>{title}</PageTitle>
+        <Alert>
+          {t.survey.needsConsent}{" "}
+          <Link href="/settings/privacy" className="underline">
+            {t.settings.privacy}
+          </Link>
+        </Alert>
+      </>
+    );
+  }
   if (sp.done || existing) {
     return (
       <>

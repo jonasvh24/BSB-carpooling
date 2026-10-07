@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { Alert, Button, Card, PageTitle } from "@/components/ui";
 import { sendSurveyAction } from "../actions";
+import { MIN_GROUP } from "@/lib/admin/metrics";
 
 export const metadata = { title: t.admin.surveys };
 export const dynamic = "force-dynamic";
@@ -12,7 +13,15 @@ export default async function AdminSurveys({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const counts = await db.surveyResponse.groupBy({ by: ["surveyKey"], where: { user: { orgId: admin.orgId } }, _count: true });
   const n = (k: string) => counts.find((c) => c.surveyKey === k)?._count ?? 0;
-  const responses = await db.surveyResponse.findMany({ where: { user: { orgId: admin.orgId }, surveyKey: { in: ["WEEK4", "EXIT"] } }, orderBy: { createdAt: "desc" } });
+  // Free text is shown per question, sorted, and only when enough people who
+  // agreed to the research have answered; never as one person's set of answers.
+  const responses = await db.surveyResponse.findMany({
+    where: { surveyKey: { in: ["WEEK4", "EXIT"] }, user: { orgId: admin.orgId, consents: { some: { scope: "PILOT_RESEARCH", withdrawnAt: null } } } },
+    select: { surveyKey: true, answers: true },
+  });
+  const enough = responses.length >= MIN_GROUP;
+  const answers = enough ? responses.map((r) => JSON.parse(r.answers) as Record<string, string | number>) : [];
+  const texts = (key: string) => answers.map((a) => String(a[key] ?? "").trim()).filter(Boolean).sort();
   return (
     <>
       <PageTitle>{t.admin.surveys}</PageTitle>
@@ -44,23 +53,23 @@ export default async function AdminSurveys({ searchParams }: { searchParams: Pro
         </Card>
       </div>
       <h2 className="mt-6 mb-2 text-lg font-bold">{t.admin.ui.freeText}</h2>
-      <ul className="space-y-2 text-sm">
-        {responses.map((r) => {
-          const a = JSON.parse(r.answers) as Record<string, string | number>;
-          return (
-            <li key={r.id} className="rounded-lg border border-border bg-surface p-3">
-              <p className="text-xs text-muted">
-                {r.surveyKey} · recommend {a.recommend}
-                {a.keep != null && ` · ${t.admin.ui.dash.keep} ${a.keep} · ${t.admin.ui.dash.pay} ${a.pay}`}
-              </p>
-              {a.worked && <p><strong>{t.survey.worked}</strong> {a.worked}</p>}
-              {a.didnt && <p><strong>{t.survey.didnt}</strong> {a.didnt}</p>}
-              {a.oneChange && <p><strong>{t.survey.oneChange}</strong> {a.oneChange}</p>}
-            </li>
-          );
-        })}
-        {responses.length === 0 && <li className="text-muted">—</li>}
-      </ul>
+      {!enough ? (
+        <Alert>{fmt(t.admin.ui.suppressed, { min: MIN_GROUP })}</Alert>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-3">
+          {([["worked", t.survey.worked], ["didnt", t.survey.didnt], ["oneChange", t.survey.oneChange]] as const).map(([key, label]) => (
+            <Card key={key}>
+              <h3 className="font-medium">{label}</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                {texts(key).map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+                {texts(key).length === 0 && <li className="list-none text-muted">—</li>}
+              </ul>
+            </Card>
+          ))}
+        </div>
+      )}
     </>
   );
 }

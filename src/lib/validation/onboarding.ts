@@ -11,10 +11,11 @@ export const aboutSchema = z.object({
     .regex(/^[+0-9 ()./-]*$/)
     .optional()
     .or(z.literal("")),
-  // Photo is a small data URL produced client-side (≤ 256 px JPEG).
+  // Photo is a small data URL produced client-side (≤ 256 px JPEG). JPEG only:
+  // the server strips metadata from it (src/lib/photo.ts) and knows no other format.
   photoUrl: z
     .string()
-    .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/)
+    .regex(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/)
     .max(200_000)
     .optional()
     .or(z.literal("")),
@@ -90,9 +91,23 @@ export const researchSchema = z.object({
 });
 export type ResearchAnswers = z.infer<typeof researchSchema>;
 
+// Location sharing is what matching runs on, so it is required to use the app.
+// Research is a separate, optional consent (GDPR Art. 7(4): not bundled).
 export const consentSchema = z.object({
   location: z.literal("on"),
-  research: z.literal("on"),
+  research: z.literal("on").nullable().optional(),
 });
 
 export const TOTAL_STEPS = 7;
+
+// The editing pages that reuse the wizard forms. Anything else is ignored, so a
+// crafted form cannot turn the post-save redirect into a link to another site.
+const RETURN_TO = ["/profile", "/schedule"];
+export function safeReturnTo(value: unknown): string | undefined {
+  return typeof value === "string" && RETURN_TO.includes(value) ? value : undefined;
+}
+
+// Matches show detours and pickup times computed from exact homes. Someone who
+// could move their own home at will could read those numbers from many places
+// and narrow down a colleague's address, so moves are rationed.
+export const HOME_CHANGES_PER_DAY = 3;

@@ -1,5 +1,9 @@
 export type LatLng = { lat: number; lng: number };
 
+// Cache-key form of a point: 4 decimals, about 11 m. Shared by the geo cache
+// and by account deletion, which removes every cached row that names the home.
+export const ptKey = (p: LatLng) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
+
 const R = 6371000; // metres
 
 export function haversineM(a: LatLng, b: LatLng): number {

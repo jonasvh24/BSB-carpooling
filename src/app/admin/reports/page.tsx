@@ -49,6 +49,7 @@ export default async function AdminReports() {
                     <form action={suspendAction}>
                       <input type="hidden" name="id" value={r.reportedUserId} />
                       <input type="hidden" name="status" value="SUSPENDED" />
+                      <input type="hidden" name="reason" value={r.reason === "UNSAFE" ? "SAFETY" : "CONDUCT"} />
                       <button type="submit" className="text-danger underline">
                         {t.admin.suspend} {r.reported.name}
                       </button>

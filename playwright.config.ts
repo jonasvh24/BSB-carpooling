@@ -15,6 +15,8 @@ const env = {
   SMTP_PORT: "1",
   OSRM_URL: "http://127.0.0.1:9",
   DISABLE_CRON: "true",
+  OWNER_EMAIL: "owner@outside.test",
+  OWNER_PASSWORD: "e2e-owner-password",
 };
 
 const mobile = { ...devices["Desktop Chrome"], isMobile: true, hasTouch: true, viewport: { width: 390, height: 844 }, trace: "retain-on-failure" as const };
