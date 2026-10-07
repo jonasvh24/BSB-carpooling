@@ -10,6 +10,7 @@ const errorText: Record<NonNullable<NonNullable<SignInState>["error"]>, string> 
   notAllowed: t.auth.notAllowed,
   suspended: t.auth.suspended,
   rateLimited: t.auth.rateLimited,
+  sendFailed: t.auth.sendFailed,
 };
 
 export function SignInForm() {

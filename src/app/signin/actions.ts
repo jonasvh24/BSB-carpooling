@@ -11,7 +11,7 @@ import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({ email: z.string().trim().toLowerCase().email() });
 
-export type SignInState = { error?: "invalid" | "notAllowed" | "suspended" | "rateLimited" } | null;
+export type SignInState = { error?: "invalid" | "notAllowed" | "suspended" | "rateLimited" | "sendFailed" } | null;
 
 export async function requestSignIn(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const parsed = schema.safeParse({ email: formData.get("email") });
@@ -27,7 +27,13 @@ export async function requestSignIn(_prev: SignInState, formData: FormData): Pro
   if (existing && existing.status !== "ACTIVE") return { error: "suspended" };
   if (!existing && !(await resolveOrgForEmail(email))) return { error: "notAllowed" };
 
-  await signIn("nodemailer", { email, redirect: false });
+  // With redirect:false Auth.js never throws: a failed send comes back as the URL of the
+  // error page (…/signin/error?error=Configuration). Show that honestly instead of "Check your email".
+  const result = await signIn("nodemailer", { email, redirect: false });
+  if (typeof result === "string" && /[?&]error=/.test(result)) {
+    console.error("[signin] the sign-in email could not be sent; see the [auth] error above.");
+    return { error: "sendFailed" };
+  }
   // No address in the URL: URLs are logged by servers and tunnels.
   redirect("/signin/sent");
 }

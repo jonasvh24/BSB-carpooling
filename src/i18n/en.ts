@@ -68,7 +68,7 @@ export const en = {
     title: "Sign in",
     intro: "Sign in with your school email address.",
     emailLabel: "School email address",
-    emailPlaceholder: "name@school.be",
+    emailPlaceholder: "012222@britishschool.be",
     submit: "Send me a sign-in link",
     checkEmailTitle: "Check your email",
     checkEmailBody:
@@ -80,6 +80,7 @@ export const en = {
     suspended: "This account has been suspended. Contact an administrator.",
     invalidLink: "That sign-in link is invalid or has expired. Request a new one.",
     rateLimited: "Too many attempts. Please wait a minute and try again.",
+    sendFailed: "We could not send the sign-in email. The mail server is not configured yet; please tell the administrator.",
     tryAgain: "Try again",
     ownerTitle: "Owner sign-in (no school email)",
     ownerEmail: "Email address",
