@@ -1,6 +1,6 @@
-# Netlify deployment. Next.js is detected automatically (@netlify/plugin-nextjs).
-# The database must be Postgres there (SQLite cannot live on a serverless file system):
-# `netlify db init` provisions one and sets DATABASE_URL. See README "Netlify".
+# Netlify deployment. The database must be Postgres there (SQLite cannot live on a
+# serverless file system): the @netlify/database package provisions one on the first
+# deploy and exposes it as NETLIFY_DB_URL. See README "Netlify".
 [build]
   command = "bash scripts/netlify-build.sh"
   publish = ".next"
@@ -8,7 +8,8 @@
 [build.environment]
   NODE_VERSION = "22"
   DISABLE_CRON = "true"
-  PRISMA_SCHEMA = "prisma/schema.postgres.prisma"
 
-[functions]
-  node_bundler = "esbuild"
+# Sites created through the API do not get the framework runtime auto-attached,
+# so it is declared here; Netlify installs it during the build.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
