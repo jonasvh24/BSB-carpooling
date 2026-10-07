@@ -6,7 +6,11 @@
 set -euo pipefail
 # Netlify DB exposes the connection string as NETLIFY_DATABASE_URL.
 export DATABASE_URL="${DATABASE_URL:-${NETLIFY_DATABASE_URL:-}}"
-: "${DATABASE_URL:?DATABASE_URL is not set — run 'netlify db init' or add a Postgres URL}"
+if [ -z "$DATABASE_URL" ]; then
+  echo "DATABASE_URL is not set. Variables available that mention DATABASE/NEON/NETLIFY:" >&2
+  env | cut -d= -f1 | grep -i -E 'DATABASE|NEON|NETLIFY' | sort >&2
+  exit 1
+fi
 sed 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma > prisma/schema.postgres.prisma
 npx prisma generate --schema prisma/schema.postgres.prisma
 # Schema changes and seeding go over the direct (unpooled) connection; the app itself
