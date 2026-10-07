@@ -17,7 +17,13 @@ const securityHeaders = [
   ...(https ? [{ key: "Strict-Transport-Security", value: "max-age=15552000" }] : []),
 ];
 
+// Hosts that may load dev-only resources (HMR socket, on-demand chunks) besides localhost.
+// Without this, a phone on the Cloudflare quick tunnel gets the server-rendered HTML but
+// the client never hydrates: no map, no address suggestions. Production builds ignore it.
+const devOrigins = ["*.trycloudflare.com", ...(process.env.DEV_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean)];
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins: devOrigins,
   // The e2e suite runs a second server in pilot mode from the same checkout.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,

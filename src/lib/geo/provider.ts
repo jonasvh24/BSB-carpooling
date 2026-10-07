@@ -80,7 +80,13 @@ export async function reverseGeocode(p: LatLng): Promise<string> {
       url.searchParams.set("lon", String(p.lng));
       url.searchParams.set("zoom", "18");
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
-      if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+      if (!res.ok) {
+        // Nominatim refuses some User-Agents outright (403). Photon's reverse endpoint is
+        // the fallback before giving up and showing bare coordinates.
+        const viaPhoton = await photonReverse(p).catch(() => null);
+        if (viaPhoton) return viaPhoton;
+        throw new Error(`Nominatim ${res.status}`);
+      }
       const json = (await res.json()) as { display_name?: string; address?: Record<string, string> };
       const a = json.address ?? {};
       const street = [a.road, a.house_number].filter(Boolean).join(" ");
@@ -89,6 +95,21 @@ export async function reverseGeocode(p: LatLng): Promise<string> {
       return short || json.display_name || `${round(p.lat)}, ${round(p.lng)}`;
     }),
   );
+}
+
+async function photonReverse(p: LatLng): Promise<string | null> {
+  const url = new URL("/reverse", env.PHOTON_URL);
+  url.searchParams.set("lat", String(p.lat));
+  url.searchParams.set("lon", String(p.lng));
+  url.searchParams.set("lang", "en");
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
+  if (!res.ok) return null;
+  const json = (await res.json()) as { features?: Array<{ properties: Record<string, string | undefined> }> };
+  const f = json.features?.[0]?.properties;
+  if (!f) return null;
+  const street = [f.street ?? f.name, f.housenumber].filter(Boolean).join(" ");
+  const town = f.city ?? f.locality ?? f.county ?? "";
+  return [street, [f.postcode, town].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null;
 }
 
 const RouteSchema = z.object({
