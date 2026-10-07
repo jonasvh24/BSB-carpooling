@@ -1,21 +1,17 @@
 import NextAuth from "next-auth";
-import Nodemailer from "next-auth/providers/nodemailer";
 import Credentials from "next-auth/providers/credentials";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import type { Adapter, AdapterUser } from "next-auth/adapters";
 import { db } from "./db";
-import { env } from "./env";
+import { env, isDevConvenienceEnabled } from "./env";
 import { authConfig } from "./auth.config";
-import { sendMail } from "./mail";
-import { t, fmt } from "@/i18n";
 import { parseList } from "./enums";
+import { hashPassword, verifyPassword } from "./password";
 
 export function emailDomain(email: string): string {
   return email.trim().toLowerCase().split("@")[1] ?? "";
 }
 
-// Which organisation may this address sign in to? Allowed domain first, then an
+// Which organisation may this address join? Allowed domain first, then an
 // admin invitation. Returns null when the address is not welcome anywhere.
 export async function resolveOrgForEmail(email: string): Promise<{ orgId: string; invited: boolean } | null> {
   const lower = email.trim().toLowerCase();
@@ -33,30 +29,37 @@ export function isBootstrapAdmin(email: string): boolean {
   return parseList(env.ADMIN_EMAILS).includes(email.trim().toLowerCase());
 }
 
-// The stock adapter creates users with only Auth.js fields; ours need an orgId and role.
-function orgAwareAdapter(): Adapter {
-  const base = PrismaAdapter(db);
-  return {
-    ...base,
-    async createUser(data: AdapterUser) {
-      const email = data.email.toLowerCase();
-      const resolved = await resolveOrgForEmail(email);
-      if (!resolved) throw new Error("EmailNotAllowed");
-      const user = await db.user.create({
-        data: {
-          email,
-          emailVerified: data.emailVerified ?? null,
-          name: data.name ?? "",
-          orgId: resolved.orgId,
-          role: isBootstrapAdmin(email) ? "ADMIN" : "MEMBER",
-        },
-      });
-      if (resolved.invited) {
-        await db.invitation.update({ where: { email }, data: { usedAt: new Date() } });
-      }
-      return { id: user.id, email: user.email, emailVerified: user.emailVerified, name: user.name };
+export type CreateAccountResult =
+  | { ok: true; userId: string }
+  | { ok: false; reason: "notAllowed" | "exists" | "suspended" };
+
+// Sign-up without email confirmation: the address must be on an allowed domain or
+// invited, and the person chooses a password. An account that exists but has no
+// password yet (seeded, or created before passwords) is claimed by setting one.
+export async function createAccount(email: string, password: string, phone: string | null = null): Promise<CreateAccountResult> {
+  const lower = email.trim().toLowerCase();
+  const existing = await db.user.findUnique({ where: { email: lower } });
+  const passwordHash = await hashPassword(password);
+  if (existing) {
+    if (existing.status !== "ACTIVE") return { ok: false, reason: "suspended" };
+    if (existing.passwordHash) return { ok: false, reason: "exists" };
+    await db.user.update({ where: { id: existing.id }, data: { passwordHash, phone: existing.phone ?? phone, emailVerified: existing.emailVerified ?? new Date() } });
+    return { ok: true, userId: existing.id };
+  }
+  const resolved = await resolveOrgForEmail(lower);
+  if (!resolved) return { ok: false, reason: "notAllowed" };
+  const user = await db.user.create({
+    data: {
+      email: lower,
+      emailVerified: new Date(),
+      passwordHash,
+      phone,
+      orgId: resolved.orgId,
+      role: isBootstrapAdmin(lower) ? "ADMIN" : "MEMBER",
     },
-  };
+  });
+  if (resolved.invited) await db.invitation.update({ where: { email: lower }, data: { usedAt: new Date() } });
+  return { ok: true, userId: user.id };
 }
 
 // Compare in constant time, on hashes so the lengths always match.
@@ -66,8 +69,8 @@ function sameSecret(a: string, b: string): boolean {
 }
 
 // The owner account (OWNER_EMAIL / OWNER_PASSWORD in .env): an administrator who
-// signs in with a password, for someone without a mailbox on the school's domain.
-// Returns the user row, created on first use, or null when the pair is wrong.
+// signs in with the password from the environment, for someone without a mailbox
+// on the school's domain. Returns the user row, created on first use, or null.
 export async function ownerLogin(email: string, password: string) {
   if (!env.OWNER_EMAIL || !env.OWNER_PASSWORD) return null;
   const okEmail = sameSecret(email.trim().toLowerCase(), env.OWNER_EMAIL);
@@ -85,47 +88,46 @@ export async function ownerLogin(email: string, password: string) {
   return db.user.create({ data: { email: env.OWNER_EMAIL, emailVerified: new Date(), orgId: org.id, role: "ADMIN", name: env.OWNER_EMAIL.split("@")[0] } });
 }
 
+// Email + password for everyone. The owner pair from .env is checked first.
+export async function passwordLogin(email: string, password: string) {
+  const owner = await ownerLogin(email, password);
+  if (owner) return owner;
+  const lower = email.trim().toLowerCase();
+  const user = await db.user.findUnique({ where: { email: lower } });
+  if (!user || user.status !== "ACTIVE") return null;
+  if (!(await verifyPassword(password, user.passwordHash))) return null;
+  // Promote bootstrap admins that were created before ADMIN_EMAILS was set.
+  if (user.role !== "ADMIN" && isBootstrapAdmin(lower)) {
+    return db.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+  }
+  return user;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: orgAwareAdapter(),
   providers: [
-    Nodemailer({
-      server: { host: env.SMTP_HOST, port: env.SMTP_PORT },
-      from: env.EMAIL_FROM,
-      maxAge: 24 * 60 * 60,
-      async sendVerificationRequest({ identifier, url }) {
-        await sendMail({
-          to: identifier,
-          subject: fmt(t.auth.emailSubject, { app: t.app.name }),
-          text: fmt(t.auth.emailBody, { app: t.app.name, url }),
-          html: `<p>${fmt(t.auth.emailBody, { app: t.app.name, url }).replace(url, `<a href="${url}">${url}</a>`).replace(/\n/g, "<br>")}</p>`,
-        });
-      },
-    }),
     Credentials({
-      credentials: { email: {}, password: {} },
+      credentials: { email: {}, password: {}, devUserId: {} },
       async authorize(c) {
-        const user = await ownerLogin(String(c?.email ?? ""), String(c?.password ?? ""));
+        // Development only: /dev/login-as switches into any user without a password.
+        const devUserId = typeof c?.devUserId === "string" ? c.devUserId : "";
+        if (devUserId) {
+          if (!isDevConvenienceEnabled()) return null;
+          const user = await db.user.findUnique({ where: { id: devUserId } });
+          return user ? { id: user.id, email: user.email, name: user.name } : null;
+        }
+        const user = await passwordLogin(String(c?.email ?? ""), String(c?.password ?? ""));
         return user ? { id: user.id, email: user.email, name: user.name } : null;
       },
     }),
   ],
   callbacks: {
     ...authConfig.callbacks,
-    // Defence in depth: the sign-in form checks the allowlist too, but the callback is the gate.
     async signIn({ user }) {
-      const email = user.email?.toLowerCase();
-      if (!email) return false;
-      const existing = await db.user.findUnique({ where: { email }, select: { status: true, role: true, id: true } });
-      if (existing) {
-        if (existing.status !== "ACTIVE") return "/signin/error?error=Suspended";
-        // Promote bootstrap admins that were created before ADMIN_EMAILS was set.
-        if (existing.role !== "ADMIN" && isBootstrapAdmin(email)) {
-          await db.user.update({ where: { id: existing.id }, data: { role: "ADMIN" } });
-        }
-        return true;
-      }
-      return (await resolveOrgForEmail(email)) ? true : "/signin/error?error=NotAllowed";
+      if (!user.id) return false;
+      const existing = await db.user.findUnique({ where: { id: user.id }, select: { status: true } });
+      if (!existing) return false;
+      return existing.status === "ACTIVE" ? true : "/signin/error?error=Suspended";
     },
   },
 });

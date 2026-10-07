@@ -1,0 +1,87 @@
+{
+  "source": "BSB School Term Dates 2026-2027 (printed sheet, photographed 2026-10-07). Staff still work on PL days and induction days, so only BSB holidays and public holidays are non-working.",
+  "ranges": [
+    {
+      "from": "2026-10-26",
+      "to": "2026-10-30",
+      "label": "Half term holiday"
+    },
+    {
+      "from": "2026-11-01",
+      "to": "2026-11-01",
+      "label": "Public holiday (All Saints)"
+    },
+    {
+      "from": "2026-11-11",
+      "to": "2026-11-11",
+      "label": "Public holiday (Armistice)"
+    },
+    {
+      "from": "2026-12-17",
+      "to": "2027-01-03",
+      "label": "Christmas holiday"
+    },
+    {
+      "from": "2027-02-15",
+      "to": "2027-02-19",
+      "label": "Half term holiday"
+    },
+    {
+      "from": "2027-03-28",
+      "to": "2027-04-09",
+      "label": "Easter holiday"
+    },
+    {
+      "from": "2027-05-01",
+      "to": "2027-05-01",
+      "label": "Public holiday (Labour Day)"
+    },
+    {
+      "from": "2027-05-06",
+      "to": "2027-05-06",
+      "label": "Public holiday (Ascension)"
+    },
+    {
+      "from": "2027-05-07",
+      "to": "2027-05-07",
+      "label": "BSB holiday"
+    },
+    {
+      "from": "2027-05-16",
+      "to": "2027-05-17",
+      "label": "Public holiday (Whit Monday)"
+    },
+    {
+      "from": "2027-05-18",
+      "to": "2027-05-18",
+      "label": "BSB holiday"
+    },
+    {
+      "from": "2027-06-28",
+      "to": "2027-08-22",
+      "label": "Summer holiday"
+    }
+  ],
+  "termDays": [
+    {
+      "date": "2026-08-28",
+      "label": "Autumn term starts"
+    },
+    {
+      "date": "2027-01-04",
+      "label": "Spring term starts"
+    },
+    {
+      "date": "2027-03-26",
+      "label": "Last day of Spring term"
+    },
+    {
+      "date": "2027-04-12",
+      "label": "Summer term starts"
+    },
+    {
+      "date": "2027-06-25",
+      "label": "Last day of Summer term"
+    }
+  ]
+}

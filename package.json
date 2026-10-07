@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx prisma/seed.ts",
     "seed:purge": "tsx prisma/seed.ts --purge",
+    "seed:terms": "tsx scripts/seed-term-dates.ts",
     "recompute": "tsx scripts/recompute.ts",
     "tunnel": "bash scripts/tunnel.sh",
     "backup": "bash scripts/backup.sh",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@faker-js/faker": "10.6.0",
+    "@netlify/functions": "^6.0.2",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "1.9.22",

@@ -31,7 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               key={href}
               href={href}
               aria-current={path === href ? "page" : undefined}
-              className="whitespace-nowrap rounded-full px-3 py-2 font-semibold hover:bg-white/10 hover:text-on-navy aria-[current=page]:bg-white/15 aria-[current=page]:text-on-navy"
+              className="whitespace-nowrap rounded-full px-3 py-2 font-semibold hover:bg-navy-2 hover:text-on-navy aria-[current=page]:bg-accent aria-[current=page]:text-on-navy"
             >
               {label}
             </a>

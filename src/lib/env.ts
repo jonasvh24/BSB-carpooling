@@ -43,6 +43,13 @@ const schema = z.object({
   // for it to exist; the account is an administrator. Keep them in .env only.
   OWNER_EMAIL: z.string().trim().toLowerCase().default(""),
   OWNER_PASSWORD: z.string().default(""),
+  // Text messages for "forgot password" codes. All three must be set for real
+  // SMS; in development the code is printed to the console and the dev mailbox.
+  TWILIO_ACCOUNT_SID: z.string().default(""),
+  TWILIO_AUTH_TOKEN: z.string().default(""),
+  TWILIO_FROM: z.string().default(""),
+  // Shared secret for the scheduled-job endpoint (/api/jobs) on serverless hosts.
+  JOBS_SECRET: z.string().default(""),
 });
 
 const DEV_SECRET = "dev-secret-change-me";

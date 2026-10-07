@@ -3,28 +3,32 @@
 /* British School of Brussels palette: navy #292f4c, red #c11f1b, gold #f0c65b,
    taken from britishschool.be. Text pairs keep ≥ 4.5:1 contrast. */
 :root {
-  --bg: #f3f4f8;
+  /* Full colours only: no pastel tints, no translucent washes. The "-soft" names are
+     kept for the call sites but now hold the full brand colour; text on them is
+     white or the dark gold text so contrast stays ≥ 4.5:1. */
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #eceef5;
+  --surface-2: #d9deec;
   --text: #292f4c;
-  --muted: #5b6180;
-  --border: #dcdfea;
+  --muted: #3f4663;
+  --border: #b9c0d6;
   --accent: #c11f1b;
   --accent-strong: #9c1815;
   --accent-text: #ffffff;
-  --accent-soft: #fbe9e8;
+  --accent-soft: #c11f1b;
   --navy: #292f4c;
-  --navy-2: #343955;
+  --navy-2: #3a4270;
   --on-navy: #ffffff;
-  --on-navy-muted: #c3c7dc;
+  --on-navy-muted: #ffffff;
   --gold: #f0c65b;
-  --gold-soft: #fbefd0;
+  --gold-soft: #f0c65b;
   --on-gold: #3c3011;
   --danger: #b41d22;
   --on-danger: #ffffff;
   --warn: #775f22;
   --ok: #26613e;
-  --ok-soft: #e3f3ea;
+  --ok-soft: #26613e;
+  --on-ok: #ffffff;
   --focus: #1a5fb4;
   --shadow: 0 1px 2px rgb(41 47 76 / 0.06), 0 6px 20px -8px rgb(41 47 76 / 0.18);
 }
@@ -52,6 +56,7 @@
   --color-warn: var(--warn);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
+  --color-on-ok: var(--on-ok);
   --color-focus: var(--focus);
   --shadow-card: var(--shadow);
   --font-sans: var(--font-open-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -61,26 +66,27 @@
   :root {
     --bg: #14172a;
     --surface: #1e2238;
-    --surface-2: #2a2f4a;
-    --text: #eef0f7;
-    --muted: #aab0c8;
-    --border: #3a4060;
-    --accent: #ff7a76;
-    --accent-strong: #ff9b97;
-    --accent-text: #1b0706;
-    --accent-soft: #3a2230;
+    --surface-2: #2f3658;
+    --text: #ffffff;
+    --muted: #c5cae0;
+    --border: #4a527a;
+    --accent: #e5332d;
+    --accent-strong: #ff4d47;
+    --accent-text: #ffffff;
+    --accent-soft: #c11f1b;
     --navy: #3a4270;
-    --navy-2: #2a2f4a;
+    --navy-2: #4a5490;
     --on-navy: #ffffff;
-    --on-navy-muted: #b9bed6;
+    --on-navy-muted: #ffffff;
     --gold: #f0c65b;
-    --gold-soft: #3c3520;
-    --on-gold: #f7dfa1;
-    --danger: #ff8a80;
-    --on-danger: #1b0706;
+    --gold-soft: #f0c65b;
+    --on-gold: #3c3011;
+    --danger: #e5332d;
+    --on-danger: #ffffff;
     --warn: #f0c65b;
-    --ok: #7ed49a;
-    --ok-soft: #1d3327;
+    --ok: #2f7a4d;
+    --ok-soft: #2f7a4d;
+    --on-ok: #ffffff;
     --focus: #8ab4f8;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -10px rgb(0 0 0 / 0.5);
   }
@@ -154,11 +160,12 @@ summary {
   font-weight: 600;
 }
 
-/* The swoosh from the school logo, used as a quiet backdrop on navy panels. */
+/* The swoosh from the school logo as a solid red quadrant on the navy panel: no
+   translucency, the two brand colours side by side. */
 .hero-navy {
   background:
-    radial-gradient(120% 90% at 100% 0%, rgb(193 31 27 / 0.35), transparent 55%),
-    linear-gradient(160deg, var(--navy) 0%, #1f2440 100%);
+    radial-gradient(circle at 100% 0%, var(--accent) 0 30%, transparent calc(30% + 1px)),
+    var(--navy);
   color: var(--on-navy);
 }
 

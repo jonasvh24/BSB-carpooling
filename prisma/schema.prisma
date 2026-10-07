@@ -71,6 +71,7 @@ model User {
   orgId                 String
   email                 String    @unique
   emailVerified         DateTime?
+  passwordHash          String? // scrypt, see src/lib/password.ts; null until the person sets one
   name                  String    @default("")
   phone                 String?
   photoUrl              String?

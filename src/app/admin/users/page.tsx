@@ -2,7 +2,8 @@ import { t, fmt } from "@/i18n";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { Alert, Badge, Button, Card, PageTitle, Textarea } from "@/components/ui";
-import { deleteUserAction, inviteAction, setRoleAction, suspendAction } from "../actions";
+import { Email } from "@/components/email";
+import { deleteUserAction, inviteAction, setPasswordAction, setRoleAction, suspendAction } from "../actions";
 
 export const metadata = { title: t.admin.users };
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
             <Button type="submit">{t.admin.invite}</Button>
           </div>
         </form>
-        {invitations.length > 0 && <p className="mt-2 text-xs text-muted">{t.admin.ui.pendingInvitations}: {invitations.map((i) => i.email).join(", ")}</p>}
+        {invitations.length > 0 && <p className="mt-2 text-xs text-muted">{t.admin.ui.pendingInvitations}: <Email address={invitations.map((i) => i.email).join(", ")} /></p>}
       </Card>
       {/* File downloads served by a route handler, so plain anchors are correct here. */}
       <p className="mb-2 text-sm">
@@ -63,7 +64,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
                   {u.name || "—"}
                   {u.isSeed && <Badge>{t.admin.ui.seed}</Badge>}
                 </td>
-                <td className="p-2">{u.email}</td>
+                <td className="p-2"><Email address={u.email} /></td>
                 <td className="p-2">{u.role}</td>
                 <td className="p-2">
                   <Badge tone={u.status === "ACTIVE" ? "ok" : "danger"}>{u.status}</Badge>
@@ -99,6 +100,16 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
                         <input type="hidden" name="role" value={u.role === "ADMIN" ? "MEMBER" : "ADMIN"} />
                         <button type="submit" className="underline">
                           {u.role === "ADMIN" ? t.admin.ui.makeMember : t.admin.ui.makeAdmin}
+                        </button>
+                      </form>
+                      <form action={setPasswordAction} className="flex items-center gap-1">
+                        <input type="hidden" name="id" value={u.id} />
+                        <label>
+                          <span className="sr-only">{t.admin.newPassword}</span>
+                          <input name="password" type="password" minLength={8} required autoComplete="new-password" placeholder={t.admin.newPassword} className="w-36 rounded border border-border bg-surface px-1 py-0.5 text-xs" />
+                        </label>
+                        <button type="submit" className="underline">
+                          {t.admin.setPassword}
                         </button>
                       </form>
                       <form action={deleteUserAction}>

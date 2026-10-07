@@ -3,6 +3,7 @@ import { t } from "@/i18n";
 import { requireUser } from "@/lib/session";
 import { Alert, Button, Card, PageTitle } from "@/components/ui";
 import { setMuteAction } from "./actions";
+import { Email } from "@/components/email";
 
 export const metadata = { title: t.settings.title };
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {sp.saved && <Alert kind="success">{t.app.saved}</Alert>}
       <Card className="mb-4">
         <h2 className="font-medium">{t.settings.email}</h2>
-        <p className="text-sm text-muted">{user.email}</p>
+        <p className="text-sm text-muted"><Email address={user.email} /></p>
         <form action={setMuteAction} className="mt-3">
           <label className="flex items-start gap-2">
             <input type="checkbox" name="muteEmail" defaultChecked={user.muteEmail} className="mt-1 h-4 w-4 accent-navy" />

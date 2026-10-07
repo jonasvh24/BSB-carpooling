@@ -18,6 +18,7 @@ import { env } from "@/lib/env";
 import { KM_RATE_CEILING_CENTS } from "@/lib/pools/tally";
 import { SuspendReason } from "@/lib/enums";
 import { RETENTION } from "@/lib/retention";
+import { hashPassword, PASSWORD_MAX, PASSWORD_MIN } from "@/lib/password";
 
 // Every admin action is scoped to the admin's own organisation and audited (§8.2).
 
@@ -71,6 +72,19 @@ export async function suspendAction(formData: FormData) {
     await sendMail({ to: user.email, subject: content.title, ...renderEmail(content, `${env.AUTH_URL.replace(/\/$/, "")}/terms`, t.email.suspendFooter) }).catch(() => {});
   }
   await audit(admin.orgId, admin.id, status === "ACTIVE" ? "REINSTATE" : "SUSPEND", "User", id, reason.success ? { reason: reason.data } : undefined);
+  revalidatePath("/admin/users");
+}
+
+// There is no email reset, so an administrator sets a new password for a colleague
+// who forgot theirs and tells them in person. Audited; never applies to the admin's own row.
+export async function setPasswordAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const password = z.string().min(PASSWORD_MIN).max(PASSWORD_MAX).safeParse(formData.get("password"));
+  const user = await db.user.findFirst({ where: { id, orgId: admin.orgId } });
+  if (!user || user.id === admin.id || !password.success) return;
+  await db.user.update({ where: { id }, data: { passwordHash: await hashPassword(password.data) } });
+  await audit(admin.orgId, admin.id, "SET_PASSWORD", "User", id);
   revalidatePath("/admin/users");
 }
 

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { PageTitle } from "@/components/ui";
 import { formatInTimeZone } from "date-fns-tz";
+import { Email } from "@/components/email";
 
 export const metadata = { title: t.admin.audit };
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export default async function AdminAudit() {
             {rows.map((r) => (
               <tr key={r.id} className="border-t border-border align-top">
                 <td className="whitespace-nowrap p-2">{formatInTimeZone(r.createdAt, admin.org.timezone, "d MMM HH:mm")}</td>
-                <td className="p-2">{nameOf(r.actorId)}</td>
+                <td className="p-2"><Email address={nameOf(r.actorId)} /></td>
                 <td className="p-2">{r.action}</td>
                 <td className="p-2">
                   {r.targetType} {r.targetId.slice(0, 8)}

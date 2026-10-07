@@ -22,7 +22,7 @@ export function BrandLockup() {
   return (
     <span className="flex items-center gap-2.5">
       <BsbLogo className="h-9 w-auto" />
-      <span className="border-l border-white/25 pl-2.5 text-[0.95rem] font-semibold tracking-tight text-on-navy">{t.app.name}</span>
+      <span className="border-l border-white pl-2.5 text-[0.95rem] font-semibold tracking-tight text-on-navy">{t.app.name}</span>
     </span>
   );
 }

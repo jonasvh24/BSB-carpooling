@@ -13,7 +13,7 @@ export function Button({ variant = "primary", full, className, ...props }: Butto
   const styles = {
     primary: "bg-accent text-accent-text shadow-sm hover:bg-accent-strong",
     secondary: "bg-surface text-text border border-border hover:bg-surface-2",
-    danger: "bg-danger text-on-danger hover:opacity-90",
+    danger: "bg-danger text-on-danger hover:bg-accent-strong",
     ghost: "bg-transparent text-text hover:bg-surface-2",
   }[variant];
   return <button className={cx(base, styles, full && "w-full", className)} {...props} />;
@@ -176,8 +176,8 @@ export function ChoiceGroup({
 export function Alert({ kind = "info", children }: { kind?: "info" | "error" | "success" | "warn"; children: ReactNode }) {
   const styles = {
     info: "border-border bg-surface-2",
-    error: "border-danger bg-accent-soft text-danger",
-    success: "border-ok bg-ok-soft text-ok",
+    error: "border-danger bg-danger text-on-danger",
+    success: "border-ok bg-ok text-on-ok",
     warn: "border-gold bg-gold-soft text-on-gold",
   }[kind];
   return (
@@ -199,9 +199,9 @@ export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactN
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "ok" | "warn" | "danger" | "accent" }) {
   const styles = {
     neutral: "bg-surface-2 text-text",
-    ok: "bg-ok-soft text-ok",
+    ok: "bg-ok text-on-ok",
     warn: "bg-gold-soft text-on-gold",
-    danger: "bg-accent-soft text-danger",
+    danger: "bg-danger text-on-danger",
     accent: "bg-navy text-on-navy",
   }[tone];
   return <span className={cx("inline-block rounded-full px-2.5 py-1 text-xs font-semibold", styles)}>{children}</span>;

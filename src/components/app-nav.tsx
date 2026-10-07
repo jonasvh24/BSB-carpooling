@@ -36,7 +36,7 @@ export function AppNav({ isAdmin, unread, current }: { isAdmin: boolean; unread:
                 <a
                   href={i.href}
                   aria-current={active ? "page" : undefined}
-                  className="relative flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[0.68rem] font-semibold aria-[current=page]:text-accent md:min-h-0 md:flex-row md:gap-0 md:rounded-full md:px-3.5 md:py-2 md:text-sm md:hover:bg-white/10 md:hover:text-on-navy md:aria-[current=page]:bg-white/15 md:aria-[current=page]:text-on-navy"
+                  className="relative flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[0.68rem] font-semibold aria-[current=page]:text-accent md:min-h-0 md:flex-row md:gap-0 md:rounded-full md:px-3.5 md:py-2 md:text-sm md:hover:bg-navy-2 md:hover:text-on-navy md:aria-[current=page]:bg-white/15 md:aria-[current=page]:text-on-navy"
                 >
                   <svg aria-hidden viewBox="0 0 24 24" className="h-6 w-6 md:hidden" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d={i.icon} />
@@ -52,7 +52,7 @@ export function AppNav({ isAdmin, unread, current }: { isAdmin: boolean; unread:
         </ul>
         <div className="ml-auto flex items-center gap-1 text-sm">
           {isAdmin && (
-            <a href="/admin" className="whitespace-nowrap rounded-full px-3 py-2 font-semibold text-gold hover:bg-white/10">
+            <a href="/admin" className="whitespace-nowrap rounded-full px-3 py-2 font-semibold text-gold hover:bg-navy-2">
               {t.nav.admin}
             </a>
           )}
@@ -62,7 +62,7 @@ export function AppNav({ isAdmin, unread, current }: { isAdmin: boolean; unread:
               await signOut({ redirectTo: "/" });
             }}
           >
-            <button type="submit" className="whitespace-nowrap rounded-full px-3 py-2 text-on-navy-muted hover:bg-white/10 hover:text-on-navy">
+            <button type="submit" className="whitespace-nowrap rounded-full px-3 py-2 text-on-navy-muted hover:bg-navy-2 hover:text-on-navy">
               {t.nav.signOut}
             </button>
           </form>

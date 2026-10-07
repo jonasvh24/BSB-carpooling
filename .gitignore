@@ -50,3 +50,7 @@ test-results/
 playwright-report/
 .next-pilot/
 .next-preview/
+
+# derived on Netlify from schema.prisma
+prisma/schema.postgres.prisma
+.netlify/
