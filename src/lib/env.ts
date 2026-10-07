@@ -54,7 +54,9 @@ const schema = z.object({
 
 const DEV_SECRET = "dev-secret-change-me";
 
-export const env = schema.parse(process.env);
+// Netlify defines its own SITE_NAME (the project slug), so the campus name may also
+// come from SCHOOL_SITE_NAME, which wins when set.
+export const env = schema.parse({ ...process.env, SITE_NAME: process.env.SCHOOL_SITE_NAME || process.env.SITE_NAME });
 
 // Session cookies are signed with AUTH_SECRET. The built-in value is public
 // (it is in this file), so anything but local development must set its own.

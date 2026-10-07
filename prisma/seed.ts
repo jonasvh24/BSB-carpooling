@@ -38,7 +38,7 @@ export async function seedOrg() {
     },
   });
 
-  const siteName = process.env.SITE_NAME ?? "Main campus";
+  const siteName = process.env.SCHOOL_SITE_NAME || process.env.SITE_NAME || "Main campus";
   let site = await db.site.findFirst({ where: { orgId: org.id, name: siteName } });
   const siteData = {
     address: process.env.SITE_ADDRESS ?? "",
