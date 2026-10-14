@@ -27,6 +27,7 @@ const schema = z.object({
     .transform((v) => v === "true"),
   GEO_USER_AGENT: z.string().default("jvcarpool-pilot/0.1 (dev)"),
   PHOTON_URL: z.string().default("https://photon.komoot.io"),
+  GEOPUNT_URL: z.string().default("https://geo.api.vlaanderen.be/geolocation/v4"),
   NOMINATIM_URL: z.string().default("https://nominatim.openstreetmap.org"),
   OSRM_URL: z.string().default("https://router.project-osrm.org"),
   // Minimum gap between routing requests. 0 = none. The public demo server asks

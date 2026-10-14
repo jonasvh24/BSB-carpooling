@@ -6,7 +6,7 @@ import { saveHome, type StepState } from "@/app/(app)/onboarding/actions";
 import { t } from "@/i18n";
 import { Alert, Field, Input } from "@/components/ui";
 import { StepActions } from "./shell";
-import { reverseFromBrowser, searchFromBrowser } from "@/lib/geo/photon-browser";
+import { reverseFromBrowser, searchFromBrowser } from "@/lib/geo/geo-browser";
 
 const HomeMap = dynamic(() => import("./home-map"), { ssr: false, loading: () => <div className="h-64 rounded-xl bg-surface-2" /> });
 
@@ -50,7 +50,7 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
         } else if (res && res.status !== 503) {
           setHits([]); // 401 or 429: nothing a second lookup would fix
         } else {
-          // The server could not reach the geocoder; ask it from the browser instead.
+          // The server could not reach any geocoder; ask them from the browser instead.
           try {
             setHits(await searchFromBrowser(q, siteCentre));
             setUnavailable(false);
