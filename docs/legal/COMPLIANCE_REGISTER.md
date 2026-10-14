@@ -1,5 +1,7 @@
 # Compliance register
 
+> **Superseded on 2026-10-14** by `docs/DATA_MAP.md` and `docs/COMPLIANCE_GAP_REPORT.md`. Kept for history.
+
 > **As found on 2026-09-30, before any fix (Phase B).** Phase C rewrites the Status, Evidence and Action columns as gaps are closed.
 
 Status: working document for the pilot owner and their lawyer. It records what the code does and where; it is not legal advice and the author is not a lawyer. Legal judgement calls are in `LAWYER_QUESTIONS.md`.
