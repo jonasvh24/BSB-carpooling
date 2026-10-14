@@ -8,6 +8,9 @@
 [build.environment]
   NODE_VERSION = "22"
   DISABLE_CRON = "true"
+  # Staff sign up with their school address (e.g. 012222@britishschool.be). The build's
+  # seed step adds this to the organisation's list; it never removes domains.
+  ALLOWED_EMAIL_DOMAINS = "britishschool.be"
 
 # Sites created through the API do not get the framework runtime auto-attached,
 # so it is declared here; Netlify installs it during the build.

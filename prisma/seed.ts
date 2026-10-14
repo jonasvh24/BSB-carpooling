@@ -24,19 +24,25 @@ function slugify(s: string) {
 export async function seedOrg() {
   const name = process.env.ORG_NAME ?? "Pilot School";
   const slug = slugify(name) || "pilot";
+  // Netlify runs this on every deploy. Add the env domains to the stored list rather
+  // than replacing it: a deploy without ALLOWED_EMAIL_DOMAINS used to empty the list and
+  // refuse every sign-up, and wiped domains added under Admin -> Organisation settings.
+  const existing = await db.organisation.findUnique({ where: { slug }, select: { allowedEmailDomains: true } });
+  const allowedEmailDomains = [...new Set([...(existing?.allowedEmailDomains ?? "").split(","), ...envList("ALLOWED_EMAIL_DOMAINS")].map((d) => d.trim().toLowerCase()).filter(Boolean))].join(",");
   const org = await db.organisation.upsert({
     where: { slug },
     create: {
       name,
       slug,
-      allowedEmailDomains: envList("ALLOWED_EMAIL_DOMAINS").join(","),
+      allowedEmailDomains,
       headcount: Number(process.env.ORG_HEADCOUNT ?? 100),
     },
     update: {
-      allowedEmailDomains: envList("ALLOWED_EMAIL_DOMAINS").join(","),
+      allowedEmailDomains,
       headcount: Number(process.env.ORG_HEADCOUNT ?? 100),
     },
   });
+  if (!allowedEmailDomains) console.warn(`org "${name}" has no allowed email domains: only invited addresses can sign up. Set ALLOWED_EMAIL_DOMAINS.`);
 
   const siteName = process.env.SCHOOL_SITE_NAME || process.env.SITE_NAME || "Main campus";
   let site = await db.site.findFirst({ where: { orgId: org.id, name: siteName } });
