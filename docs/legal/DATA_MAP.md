@@ -1,5 +1,7 @@
 # Data map
 
+> **Superseded on 2026-10-14** by `docs/DATA_MAP.md` and `docs/COMPLIANCE_GAP_REPORT.md`. Kept for history.
+
 > **As found on 2026-09-30, before any fix.** Cells marked **GAP** are findings; each has a row in `COMPLIANCE_REGISTER.md`. This file is rewritten to the fixed state in Phase C.
 
 Status: working document for the pilot owner and their lawyer. Not legal advice. Built from the code (`prisma/schema.prisma` and the modules that read and write it), not from the other documents. Where a document and the code disagreed, the code was taken as the truth and the disagreement is listed in `COMPLIANCE_REGISTER.md`.
