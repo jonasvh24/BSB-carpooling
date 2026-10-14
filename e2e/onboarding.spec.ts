@@ -164,3 +164,35 @@ test("research is optional: skipping the questions and leaving the box empty sti
   await expect(page).toHaveURL(/\/onboarding\?step=7/);
   await ctx.close();
 });
+
+test("address search still works when the server cannot reach the geocoder", async ({ page, request }) => {
+  await signInAs(page, request, "search.fallback@example.org");
+  await testDb.user.update({ where: { email: "search.fallback@example.org" }, data: { onboardingStep: 2 } });
+  // The server's lookup fails (as when Photon refuses the host's addresses); the browser asks Photon itself.
+  await page.route("**/api/geo/search", (route) => route.fulfill({ status: 503, json: [] }));
+  let browserCalls = 0;
+  await page.route("https://photon.komoot.io/api/**", (route) => {
+    browserCalls++;
+    return route.fulfill({
+      json: { features: [{ geometry: { coordinates: [4.5156, 50.8236] }, properties: { street: "Pater Dupierreuxlaan", housenumber: "1", postcode: "3080", city: "Tervuren", country: "Belgium" } }] },
+      headers: { "access-control-allow-origin": "*" },
+    });
+  });
+  await page.route("https://tile.openstreetmap.org/**", (route) => route.abort());
+  await page.goto("/onboarding?step=2");
+  await page.getByLabel("Your home address").fill("pater dupierreuxlaan");
+  await page.getByRole("option").first().click();
+  await expect(page.getByTestId("chosen-address")).toContainText("Pater Dupierreuxlaan 1, 3080 Tervuren");
+  expect(browserCalls).toBeGreaterThan(0);
+});
+
+test("address search says so when no geocoder answers", async ({ page, request }) => {
+  await signInAs(page, request, "search.down@example.org");
+  await testDb.user.update({ where: { email: "search.down@example.org" }, data: { onboardingStep: 2 } });
+  await page.route("**/api/geo/search", (route) => route.fulfill({ status: 503, json: [] }));
+  await page.route("https://photon.komoot.io/**", (route) => route.abort());
+  await page.route("https://tile.openstreetmap.org/**", (route) => route.abort());
+  await page.goto("/onboarding?step=2");
+  await page.getByLabel("Your home address").fill("pater dupierreuxlaan");
+  await expect(page.getByRole("status")).toContainText("not responding");
+});

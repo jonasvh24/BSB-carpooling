@@ -142,6 +142,7 @@ export const en = {
       mapLabel: "Map showing your home location",
       pinLabel: "Your home. Drag to move.",
       tooManyMoves: "You have changed your home address several times today. Please try again tomorrow.",
+      searchUnavailable: "Address search is not responding right now. Zoom the map to your street and drag the pin to your home instead.",
     },
     days: {
       site: "Which school are you at?",

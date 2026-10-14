@@ -15,7 +15,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return new NextResponse(null, { status: 400 });
   try {
     return NextResponse.json({ label: await reverseGeocode(parsed.data) });
-  } catch {
-    return NextResponse.json({ label: `${parsed.data.lat.toFixed(4)}, ${parsed.data.lng.toFixed(4)}` });
+  } catch (err) {
+    console.warn(`[geo] reverse failed: ${(err as Error).name} ${(err as Error).message}`);
+    return NextResponse.json({ label: `${parsed.data.lat.toFixed(4)}, ${parsed.data.lng.toFixed(4)}` }, { status: 503 });
   }
 }

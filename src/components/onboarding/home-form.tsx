@@ -6,6 +6,7 @@ import { saveHome, type StepState } from "@/app/(app)/onboarding/actions";
 import { t } from "@/i18n";
 import { Alert, Field, Input } from "@/components/ui";
 import { StepActions } from "./shell";
+import { reverseFromBrowser, searchFromBrowser } from "@/lib/geo/photon-browser";
 
 const HomeMap = dynamic(() => import("./home-map"), { ssr: false, loading: () => <div className="h-64 rounded-xl bg-surface-2" /> });
 
@@ -22,6 +23,7 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
   const [query, setQuery] = useState(initial.homeAddress);
   const [hits, setHits] = useState<Hit[]>([]);
   const [searching, setSearching] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<Hit | null>(
     initial.homeLat != null && initial.homeLng != null ? { label: initial.homeAddress, lat: initial.homeLat, lng: initial.homeLng } : null,
@@ -41,8 +43,22 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
     timer.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch("/api/geo/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) });
-        setHits(res.ok ? await res.json() : []);
+        const res = await fetch("/api/geo/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) }).catch(() => null);
+        if (res?.ok) {
+          setUnavailable(false);
+          setHits(await res.json());
+        } else if (res && res.status !== 503) {
+          setHits([]); // 401 or 429: nothing a second lookup would fix
+        } else {
+          // The server could not reach the geocoder; ask it from the browser instead.
+          try {
+            setHits(await searchFromBrowser(q, siteCentre));
+            setUnavailable(false);
+          } catch {
+            setHits([]);
+            setUnavailable(true);
+          }
+        }
       } finally {
         setSearching(false);
       }
@@ -53,8 +69,9 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
   async function moved(p: { lat: number; lng: number }) {
     setChosen({ label: t.onboarding.home.searching, ...p });
     try {
-      const res = await fetch("/api/geo/reverse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) });
-      const { label } = res.ok ? await res.json() : { label: `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}` };
+      const res = await fetch("/api/geo/reverse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) }).catch(() => null);
+      const viaBrowser = res?.ok ? null : await reverseFromBrowser(p).catch(() => null);
+      const label: string = res?.ok ? (await res.json()).label : (viaBrowser ?? `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`);
       setChosen({ label, ...p });
       setQuery(label);
     } catch {
@@ -103,7 +120,10 @@ export function HomeForm({ initial, siteCentre, returnTo }: Props) {
           )}
         </div>
       </Field>
-      {!searching && query.trim().length >= 3 && open && hits.length === 0 && !chosen && (
+      {!searching && unavailable && (
+        <p role="status" className="text-sm mb-3">{t.onboarding.home.searchUnavailable}</p>
+      )}
+      {!searching && !unavailable && query.trim().length >= 3 && open && hits.length === 0 && !chosen && (
         <p className="text-sm text-muted mb-3">{t.onboarding.home.noResults}</p>
       )}
       <HomeMap lat={centre.lat} lng={centre.lng} onMove={moved} ariaLabel={t.onboarding.home.mapLabel} pinLabel={t.onboarding.home.pinLabel} />

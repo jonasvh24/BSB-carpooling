@@ -4,11 +4,12 @@ import { env } from "../env";
 import { ptKey, type LatLng } from "./haversine";
 import { withFallback } from "./with-fallback";
 import type { RouteResult, Router } from "../matching/types";
+import { photonHits, photonReverseLabel, photonReverseUrl, photonSearchUrl, type GeocodeHit } from "./photon";
 
 // The only module that talks to external geo services. Swapping Mapbox/Google/ORS
 // in later means reimplementing these three functions; callers never change.
 
-export type GeocodeHit = { label: string; lat: number; lng: number };
+export type { GeocodeHit };
 
 const round = (n: number) => n.toFixed(4);
 
@@ -36,27 +37,9 @@ export async function geocode(query: string, near?: LatLng): Promise<GeocodeHit[
   if (q.length < 3) return [];
   const key = `${q}|${near ? ptKey(near) : ""}`;
   return cached("GEOCODE", key, GeocodeHits, async () => {
-    const url = new URL("/api/", env.PHOTON_URL);
-    url.searchParams.set("q", q);
-    url.searchParams.set("limit", "6");
-    url.searchParams.set("lang", "en");
-    if (near) {
-      url.searchParams.set("lat", String(near.lat));
-      url.searchParams.set("lon", String(near.lng));
-    }
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
+    const res = await fetch(photonSearchUrl(env.PHOTON_URL, q, near), { headers, signal: AbortSignal.timeout(6000) });
     if (!res.ok) throw new Error(`Photon ${res.status}`);
-    const json = (await res.json()) as {
-      features: Array<{ geometry: { coordinates: [number, number] }; properties: Record<string, string | undefined> }>;
-    };
-    return json.features.map((f) => {
-      const p = f.properties;
-      const street = [p.street ?? p.name, p.housenumber].filter(Boolean).join(" ");
-      const label = [street, [p.postcode, p.city ?? p.locality ?? p.county].filter(Boolean).join(" "), p.country]
-        .filter(Boolean)
-        .join(", ");
-      return { label, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] };
-    });
+    return photonHits(await res.json());
   });
 }
 
@@ -98,18 +81,9 @@ export async function reverseGeocode(p: LatLng): Promise<string> {
 }
 
 async function photonReverse(p: LatLng): Promise<string | null> {
-  const url = new URL("/reverse", env.PHOTON_URL);
-  url.searchParams.set("lat", String(p.lat));
-  url.searchParams.set("lon", String(p.lng));
-  url.searchParams.set("lang", "en");
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
+  const res = await fetch(photonReverseUrl(env.PHOTON_URL, p), { headers, signal: AbortSignal.timeout(6000) });
   if (!res.ok) return null;
-  const json = (await res.json()) as { features?: Array<{ properties: Record<string, string | undefined> }> };
-  const f = json.features?.[0]?.properties;
-  if (!f) return null;
-  const street = [f.street ?? f.name, f.housenumber].filter(Boolean).join(" ");
-  const town = f.city ?? f.locality ?? f.county ?? "";
-  return [street, [f.postcode, town].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null;
+  return photonReverseLabel(await res.json());
 }
 
 const RouteSchema = z.object({
