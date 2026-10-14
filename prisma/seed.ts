@@ -13,7 +13,7 @@ const db = new PrismaClient();
 function envList(name: string): string[] {
   return (process.env[name] ?? "")
     .split(",")
-    .map((s) => s.trim().toLowerCase())
+    .map((s) => s.trim().toLowerCase().replace(/^@/, ""))
     .filter(Boolean);
 }
 

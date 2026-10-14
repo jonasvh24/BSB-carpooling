@@ -72,6 +72,7 @@ model User {
   email                 String    @unique
   emailVerified         DateTime?
   passwordHash          String? // scrypt, see src/lib/password.ts; null until the person sets one
+  credentialsChangedAt  DateTime? // sessions signed in before this are refused (src/lib/session.ts)
   name                  String    @default("")
   phone                 String?
   photoUrl              String?
@@ -404,6 +405,16 @@ model GeoCache {
   kind      String // GEOCODE | REVERSE | ROUTE
   value     String // JSON text
   createdAt DateTime @default(now())
+}
+
+// Attempt counter for sign-in, sign-up and reset codes. In the database rather than
+// in memory because Netlify runs many short-lived function instances. Purged daily.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
 }
 
 model AuditLog {

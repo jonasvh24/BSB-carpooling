@@ -8,11 +8,17 @@ export const authConfig = {
   trustHost: true,
   callbacks: {
     jwt({ token, user }) {
-      if (user?.id) token.sub = user.id;
+      // authAt is set once, at sign-in. Unlike iat it survives the sliding refresh, so
+      // getCurrentUser can refuse sessions that predate a password change.
+      if (user?.id) {
+        token.sub = user.id;
+        token.authAt = Math.floor(Date.now() / 1000);
+      }
       return token;
     },
     session({ session, token }) {
       if (token.sub) session.user.id = token.sub;
+      session.authAt = typeof token.authAt === "number" ? token.authAt : 0;
       return session;
     },
     authorized({ auth, request }) {

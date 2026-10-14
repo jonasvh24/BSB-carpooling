@@ -6,6 +6,7 @@ import { env, isDevConvenienceEnabled } from "./env";
 import { authConfig } from "./auth.config";
 import { parseList } from "./enums";
 import { hashPassword, verifyPassword } from "./password";
+import { clearSignInFailures, clientIpFrom, recordSignInFailure, signInBlocked } from "./auth-limits";
 
 export function emailDomain(email: string): string {
   return email.trim().toLowerCase().split("@")[1] ?? "";
@@ -33,9 +34,10 @@ export type CreateAccountResult =
   | { ok: true; userId: string }
   | { ok: false; reason: "notAllowed" | "exists" | "suspended" };
 
-// Sign-up without email confirmation: the address must be on an allowed domain or
-// invited, and the person chooses a password. An account that exists but has no
-// password yet (seeded, or created before passwords) is claimed by setting one.
+// Creates the account, or claims one that exists without a password (seeded
+// administrators, accounts from before passwords). Only call this after the person has
+// proved they read the mailbox (src/lib/signup-code.ts): the claim branch has no other
+// check, and without that proof anyone could take over an administrator's address.
 export async function createAccount(email: string, password: string, phone: string | null = null): Promise<CreateAccountResult> {
   const lower = email.trim().toLowerCase();
   const existing = await db.user.findUnique({ where: { email: lower } });
@@ -43,7 +45,7 @@ export async function createAccount(email: string, password: string, phone: stri
   if (existing) {
     if (existing.status !== "ACTIVE") return { ok: false, reason: "suspended" };
     if (existing.passwordHash) return { ok: false, reason: "exists" };
-    await db.user.update({ where: { id: existing.id }, data: { passwordHash, phone: existing.phone ?? phone, emailVerified: existing.emailVerified ?? new Date() } });
+    await db.user.update({ where: { id: existing.id }, data: { passwordHash, credentialsChangedAt: new Date(), phone: existing.phone ?? phone, emailVerified: existing.emailVerified ?? new Date() } });
     return { ok: true, userId: existing.id };
   }
   const resolved = await resolveOrgForEmail(lower);
@@ -108,7 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { email: {}, password: {}, devUserId: {} },
-      async authorize(c) {
+      async authorize(c, request) {
         // Development only: /dev/login-as switches into any user without a password.
         const devUserId = typeof c?.devUserId === "string" ? c.devUserId : "";
         if (devUserId) {
@@ -116,8 +118,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const user = await db.user.findUnique({ where: { id: devUserId } });
           return user ? { id: user.id, email: user.email, name: user.name } : null;
         }
-        const user = await passwordLogin(String(c?.email ?? ""), String(c?.password ?? ""));
-        return user ? { id: user.id, email: user.email, name: user.name } : null;
+        // Limits live here, not only in the sign-in form's action: Auth.js also exposes this
+        // check at POST /api/auth/callback/credentials, which a script can call directly.
+        const email = String(c?.email ?? "").trim().toLowerCase();
+        const ip = clientIpFrom(request?.headers);
+        if (!email || (await signInBlocked(email, ip))) return null;
+        const user = await passwordLogin(email, String(c?.password ?? ""));
+        if (!user) {
+          await recordSignInFailure(email, ip);
+          return null;
+        }
+        await clearSignInFailures(email);
+        return { id: user.id, email: user.email, name: user.name };
       },
     }),
   ],

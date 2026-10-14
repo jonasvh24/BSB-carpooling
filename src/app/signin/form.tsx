@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { completePasswordReset, passwordSignIn, requestPasswordReset, signUp, type ForgotState, type SignInState, type SignUpState } from "./actions";
+import { completePasswordReset, completeSignup, passwordSignIn, requestPasswordReset, requestSignupCode, type ForgotState, type SignInState, type SignUpState } from "./actions";
 import { t } from "@/i18n";
 import { Alert, Button, Field, Input } from "@/components/ui";
 
 const signInErrors: Record<NonNullable<NonNullable<SignInState>["error"]>, string> = {
   invalid: t.auth.wrong,
   wrong: t.auth.wrong,
-  noAccount: t.auth.noAccount,
   suspended: t.auth.suspended,
   rateLimited: t.auth.rateLimited,
 };
@@ -43,7 +42,7 @@ export function SignInForm() {
   );
 }
 
-const signUpErrors: Record<NonNullable<NonNullable<SignUpState>["error"]>, string> = {
+const signUpErrors = {
   invalid: t.auth.invalidEmail,
   short: t.auth.passwordShort,
   mismatch: t.auth.passwordMismatch,
@@ -52,27 +51,48 @@ const signUpErrors: Record<NonNullable<NonNullable<SignUpState>["error"]>, strin
   exists: t.auth.exists,
   suspended: t.auth.suspended,
   rateLimited: t.auth.rateLimited,
+  sendFailed: t.auth.emailFailed,
+  wrongCode: t.auth.wrongCode,
 };
 
+// Two steps in one component, like the password reset: the address stays in the action
+// state, never in the URL. No password is asked for until the code arrives.
 export function SignUpForm() {
-  const [state, action, pending] = useActionState<SignUpState, FormData>(signUp, null);
+  const [state, requestAction, requesting] = useActionState<SignUpState, FormData>(requestSignupCode, null);
+  const [state2, completeAction, completing] = useActionState<SignUpState, FormData>(completeSignup, null);
+  const current = state2 ?? state;
+  if (current?.step === "code") {
+    return (
+      <form action={completeAction} noValidate>
+        <input type="hidden" name="email" value={current.email} />
+        <p className="mb-4">{t.auth.signupCodeSent}</p>
+        {current.error && <Alert kind="error">{signUpErrors[current.error]}</Alert>}
+        <Field label={t.auth.codeLabel} htmlFor="code">
+          <Input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required />
+        </Field>
+        <Field label={t.auth.newPasswordLabel} htmlFor="password" help={t.auth.passwordHint}>
+          <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} />
+        </Field>
+        <Field label={t.auth.confirmPasswordLabel} htmlFor="confirm">
+          <Input id="confirm" name="confirm" type="password" autoComplete="new-password" required minLength={8} />
+        </Field>
+        <Field label={t.auth.phoneLabel} htmlFor="phone" help={t.auth.phoneHelp} optional>
+          <Input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="0470 12 34 56" />
+        </Field>
+        <Button type="submit" full disabled={completing}>
+          {t.auth.createAccount}
+        </Button>
+      </form>
+    );
+  }
   return (
-    <form action={action} noValidate>
-      {state?.error && <Alert kind="error">{signUpErrors[state.error]}</Alert>}
+    <form action={requestAction} noValidate>
+      {current?.error && <Alert kind="error">{signUpErrors[current.error]}</Alert>}
       <Field label={t.auth.emailLabel} htmlFor="email" help={t.auth.emailHint}>
         <Input id="email" name="email" type="email" inputMode="email" autoComplete="username" required placeholder={t.auth.emailPlaceholder} />
       </Field>
-      <Field label={t.auth.newPasswordLabel} htmlFor="password" help={t.auth.passwordHint}>
-        <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} />
-      </Field>
-      <Field label={t.auth.confirmPasswordLabel} htmlFor="confirm">
-        <Input id="confirm" name="confirm" type="password" autoComplete="new-password" required minLength={8} />
-      </Field>
-      <Field label={t.auth.phoneLabel} htmlFor="phone" help={t.auth.phoneHelp} optional>
-        <Input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="0470 12 34 56" />
-      </Field>
-      <Button type="submit" full disabled={pending}>
-        {t.auth.createAccount}
+      <Button type="submit" full disabled={requesting}>
+        {t.auth.emailMeCode}
       </Button>
       <p className="mt-6 text-center text-sm">
         {t.auth.haveAccount}{" "}

@@ -27,6 +27,6 @@ export async function finishPasswordReset(email: string, code: string, password:
   const row = await db.verificationToken.findUnique({ where: { identifier_token: { identifier: ident(email), token: digest(email, code.trim()) } } });
   if (!row || row.expires < new Date()) return false;
   await db.verificationToken.deleteMany({ where: { identifier: ident(email) } });
-  await db.user.update({ where: { email }, data: { passwordHash: await hashPassword(password) } });
+  await db.user.update({ where: { email }, data: { passwordHash: await hashPassword(password), credentialsChangedAt: new Date() } });
   return true;
 }

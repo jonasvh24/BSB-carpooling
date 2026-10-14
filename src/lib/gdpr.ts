@@ -31,7 +31,9 @@ export async function deleteUserCascade(userId: string) {
       db.pool.update({ where: { id: d.poolId }, data: { name: fmt(t.pools.nameDeleted, { direction: d.pool.direction === "AM" ? t.matches.am : t.matches.pm }) } }),
     ),
     db.invitation.deleteMany({ where: { email: user.email } }),
-    db.verificationToken.deleteMany({ where: { identifier: user.email } }),
+    // Reset and sign-up codes are keyed by address with a prefix (password-reset.ts, signup-code.ts).
+    db.verificationToken.deleteMany({ where: { identifier: { in: [user.email, `pwreset:${user.email}`, `signup:${user.email}`] } } }),
+    db.rateLimitHit.deleteMany({ where: { key: { endsWith: `:${user.email}` } } }),
     // Trip.driverId is set to null by the schema; the participant row above keeps the placeholder.
     db.user.delete({ where: { id: userId } }),
   ]);

@@ -83,7 +83,7 @@ export async function setPasswordAction(formData: FormData) {
   const password = z.string().min(PASSWORD_MIN).max(PASSWORD_MAX).safeParse(formData.get("password"));
   const user = await db.user.findFirst({ where: { id, orgId: admin.orgId } });
   if (!user || user.id === admin.id || !password.success) return;
-  await db.user.update({ where: { id }, data: { passwordHash: await hashPassword(password.data) } });
+  await db.user.update({ where: { id }, data: { passwordHash: await hashPassword(password.data), credentialsChangedAt: new Date() } });
   await audit(admin.orgId, admin.id, "SET_PASSWORD", "User", id);
   revalidatePath("/admin/users");
 }
@@ -177,7 +177,7 @@ export async function removeHolidayAction(formData: FormData) {
 
 const orgSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  allowedEmailDomains: z.string().transform((s) => s.split(/[\s,;]+/).map((x) => x.trim().toLowerCase()).filter(Boolean).join(",")),
+  allowedEmailDomains: z.string().transform((s) => s.split(/[\s,;]+/).map((x) => x.trim().toLowerCase().replace(/^@/, "")).filter(Boolean).join(",")),
   timezone: z.string().trim().min(1),
   headcount: z.coerce.number().int().min(1),
   kmRateCents: z.coerce.number().int().min(0).max(KM_RATE_CEILING_CENTS),

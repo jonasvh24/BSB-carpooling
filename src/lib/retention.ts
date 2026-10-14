@@ -15,6 +15,7 @@ export const RETENTION = {
   invitationDays: 60, // unaccepted invitations
   resolvedReportDays: 365,
   auditDays: 365,
+  rateLimitDays: 1, // attempt counters keyed by address or network address; the longest window is 15 minutes
   tripAnonymiseDays: 365, // after the pool ended
   backupFiles: 30, // scripts/backup.sh keeps this many nightly copies
 } as const;
@@ -57,6 +58,7 @@ export async function runRetention(now = new Date()) {
   const messages = await db.message.deleteMany({ where: { pool: { status: "ENDED", endedAt: { lt: daysAgo(now, RETENTION.endedPoolChatDays) } } } });
   const invitations = await db.invitation.deleteMany({ where: { usedAt: null, createdAt: { lt: daysAgo(now, RETENTION.invitationDays) } } });
   const tokens = await db.verificationToken.deleteMany({ where: { expires: { lt: now } } });
+  const rateLimits = await db.rateLimitHit.deleteMany({ where: { createdAt: { lt: daysAgo(now, RETENTION.rateLimitDays) } } });
   const reports = await db.report.deleteMany({ where: { status: "RESOLVED", resolvedAt: { lt: daysAgo(now, RETENTION.resolvedReportDays) } } });
   const audit = await db.auditLog.deleteMany({ where: { createdAt: { lt: daysAgo(now, RETENTION.auditDays) } } });
   const anonymised = await anonymiseOldTrips(now);
@@ -69,6 +71,7 @@ export async function runRetention(now = new Date()) {
     messages: messages.count,
     invitations: invitations.count,
     tokens: tokens.count,
+    rateLimits: rateLimits.count,
     reports: reports.count,
     audit: audit.count,
     anonymised,

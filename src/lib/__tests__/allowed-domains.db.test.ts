@@ -36,6 +36,16 @@ describe("allowed email domains", () => {
     expect(await createAccount("012345@britishschool.be", "a-long-password")).toMatchObject({ ok: true });
   });
 
+  it("treats a domain written with a leading @ as the same domain", async () => {
+    await resetDb();
+    process.env.ORG_NAME = "Domain School";
+    process.env.ALLOWED_EMAIL_DOMAINS = "";
+    process.env.ADMIN_EMAILS = "";
+    const { org } = await seedOrg();
+    await db.organisation.update({ where: { id: org.id }, data: { allowedEmailDomains: "@britishschool.be" } });
+    expect(await createAccount("012345@britishschool.be", "a-long-password")).toMatchObject({ ok: true });
+  });
+
   it("keeps domains an administrator added when the env list differs", async () => {
     await resetDb();
     process.env.ORG_NAME = "Domain School";

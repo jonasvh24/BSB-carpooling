@@ -1,15 +1,52 @@
 import { test, expect } from "@playwright/test";
-import { E2E_PASSWORD, signInAs } from "./helpers";
+import { E2E_PASSWORD, latestCode, signInAs } from "./helpers";
 import { testDb } from "./db";
 
 test("refuses an address outside the allowed domains", async ({ page }) => {
   await page.goto("/signin/new");
   await page.getByLabel("School email address").fill("someone@elsewhere.com");
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: /./ })).toContainText("not on the list");
+  expect(await testDb.user.count({ where: { email: "someone@elsewhere.com" } })).toBe(0);
+});
+
+test("sign-up needs the emailed code; a wrong code creates nothing", async ({ page }) => {
+  const email = "teacher.code@example.org";
+  await page.goto("/signin/new");
+  await page.getByLabel("School email address").fill(email);
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  await page.getByLabel("Six-digit code").waitFor();
+  const code = await latestCode(page, email);
+  await page.getByLabel("Six-digit code").fill(code === "000000" ? "111111" : "000000");
   await page.getByLabel("Choose a password").fill(E2E_PASSWORD);
   await page.getByLabel("Repeat the password").fill(E2E_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: /./ })).toContainText("not on the list");
-  expect(await testDb.user.count({ where: { email: "someone@elsewhere.com" } })).toBe(0);
+  await expect(page.getByRole("alert").filter({ hasText: /./ })).toContainText("wrong or has expired");
+  expect(await testDb.user.count({ where: { email } })).toBe(0);
+  // The form clears after each submit.
+  await page.getByLabel("Six-digit code").fill(code);
+  await page.getByLabel("Choose a password").fill(E2E_PASSWORD);
+  await page.getByLabel("Repeat the password").fill(E2E_PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/onboarding/);
+});
+
+test("a seeded administrator cannot be claimed without the code from their mailbox", async ({ page }) => {
+  await page.goto("/signin");
+  await page.getByLabel("School email address").fill("admin@example.org");
+  await page.getByLabel("Password", { exact: true }).fill("attacker-guess");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  // Same answer as for any wrong password: no "this account has no password yet" hint.
+  await expect(page.getByRole("alert").filter({ hasText: /./ })).toContainText("do not match");
+  await page.goto("/signin/new");
+  await page.getByLabel("School email address").fill("admin@example.org");
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  await page.getByLabel("Six-digit code").fill((await latestCode(page, "admin@example.org").catch(() => "")) === "123456" ? "654321" : "123456");
+  await page.getByLabel("Choose a password").fill("attacker-password");
+  await page.getByLabel("Repeat the password").fill("attacker-password");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: /./ })).toContainText("wrong or has expired");
+  expect((await testDb.user.findUniqueOrThrow({ where: { email: "admin@example.org" } })).passwordHash).toBeNull();
 });
 
 test("creates an account with a password and lands in onboarding", async ({ page, request }) => {
@@ -29,6 +66,8 @@ test("signs in again with the password; a wrong password is refused", async ({ p
   await page.getByLabel("Password", { exact: true }).fill("not-the-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: /./ })).toContainText("do not match");
+  // The form clears after each submit.
+  await page.getByLabel("School email address").fill("teacher.two@example.org");
   await page.getByLabel("Password", { exact: true }).fill(E2E_PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/onboarding/);

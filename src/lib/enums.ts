@@ -93,5 +93,6 @@ export const formatDays = (days: number[]): string =>
 export const parseList = (s: string | null | undefined): string[] =>
   (s ?? "")
     .split(",")
-    .map((x) => x.trim().toLowerCase())
+    // "@britishschool.be" and "britishschool.be" mean the same domain.
+    .map((x) => x.trim().toLowerCase().replace(/^@/, ""))
     .filter(Boolean);
