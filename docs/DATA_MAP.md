@@ -63,7 +63,9 @@ No structured field. Free text can carry it: profile notes, schedule-exception n
 | Netlify DB / Neon | All stored data | Neon Inc., US `[HIGH]`; region to confirm in the console `[LOW]` |
 | Twilio | Phone number, reset code | Twilio Inc., US `[HIGH]` |
 | SMTP provider | Email, names, times, meeting-point labels | Not chosen |
-| photon.komoot.io | Typed address text, pin coordinates | komoot GmbH, DE `[MED]` |
+| photon.komoot.io (server) | Typed address text, pin coordinates | komoot GmbH, DE `[MED]` |
+| photon.komoot.io (browser, only when the server lookup fails) | Typed address text, pin coordinates, user IP | komoot GmbH, DE `[MED]` |
+| geo.api.vlaanderen.be (server; browser when the server lookup fails) | Typed address text, pin coordinates; user IP on the browser path | Digitaal Vlaanderen (Flemish government), BE `[MED]` |
 | nominatim.openstreetmap.org | Exact pin coordinates | OSMF, UK `[HIGH]` |
 | router.project-osrm.org | Chains of exact home coordinates | FOSSGIS e.V., DE `[MED]` |
 | tile.openstreetmap.org (from the browser) | User IP, home neighbourhood tiles | OSMF UK via Fastly CDN `[MED]` |

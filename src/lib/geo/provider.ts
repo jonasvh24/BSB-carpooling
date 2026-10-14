@@ -4,11 +4,13 @@ import { env } from "../env";
 import { ptKey, type LatLng } from "./haversine";
 import { withFallback } from "./with-fallback";
 import type { RouteResult, Router } from "../matching/types";
+import { photonHits, photonReverseLabel, photonReverseUrl, photonSearchUrl, type GeocodeHit } from "./photon";
+import { geopuntHits, geopuntReverseLabel, geopuntReverseUrl, geopuntSearchUrl } from "./geopunt";
 
 // The only module that talks to external geo services. Swapping Mapbox/Google/ORS
 // in later means reimplementing these three functions; callers never change.
 
-export type GeocodeHit = { label: string; lat: number; lng: number };
+export type { GeocodeHit };
 
 const round = (n: number) => n.toFixed(4);
 
@@ -30,33 +32,35 @@ const headers = { "User-Agent": env.GEO_USER_AGENT, Accept: "application/json" }
 
 const GeocodeHits = z.array(z.object({ label: z.string(), lat: z.number(), lng: z.number() }));
 
-// Photon (komoot) allows per-keystroke search; results are biased towards `near`.
+async function getJson(url: URL, provider: string): Promise<unknown> {
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
+  if (!res.ok) throw new Error(`${provider} ${res.status}`);
+  return res.json();
+}
+
+// Photon (komoot) first: per-keystroke search, results biased towards `near`. Geopunt
+// (Flemish government) when Photon fails or finds nothing. Throws only when both fail,
+// so the route can answer 503 and the browser can try them itself (geo-browser.ts).
 export async function geocode(query: string, near?: LatLng): Promise<GeocodeHit[]> {
   const q = query.trim().toLowerCase();
   if (q.length < 3) return [];
   const key = `${q}|${near ? ptKey(near) : ""}`;
   return cached("GEOCODE", key, GeocodeHits, async () => {
-    const url = new URL("/api/", env.PHOTON_URL);
-    url.searchParams.set("q", q);
-    url.searchParams.set("limit", "6");
-    url.searchParams.set("lang", "en");
-    if (near) {
-      url.searchParams.set("lat", String(near.lat));
-      url.searchParams.set("lon", String(near.lng));
+    const errors: string[] = [];
+    let photon: GeocodeHit[] | null = null;
+    try {
+      photon = photonHits(await getJson(photonSearchUrl(env.PHOTON_URL, q, near), "Photon"));
+      if (photon.length > 0) return photon;
+    } catch (err) {
+      errors.push((err as Error).message);
     }
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
-    if (!res.ok) throw new Error(`Photon ${res.status}`);
-    const json = (await res.json()) as {
-      features: Array<{ geometry: { coordinates: [number, number] }; properties: Record<string, string | undefined> }>;
-    };
-    return json.features.map((f) => {
-      const p = f.properties;
-      const street = [p.street ?? p.name, p.housenumber].filter(Boolean).join(" ");
-      const label = [street, [p.postcode, p.city ?? p.locality ?? p.county].filter(Boolean).join(" "), p.country]
-        .filter(Boolean)
-        .join(", ");
-      return { label, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] };
-    });
+    try {
+      return geopuntHits(await getJson(geopuntSearchUrl(env.GEOPUNT_URL, q), "Geopunt"));
+    } catch (err) {
+      errors.push((err as Error).message);
+    }
+    if (photon) return photon; // Photon answered, with nothing; Geopunt failed
+    throw new Error(errors.join("; "));
   });
 }
 
@@ -79,13 +83,13 @@ export async function reverseGeocode(p: LatLng): Promise<string> {
       url.searchParams.set("lat", String(p.lat));
       url.searchParams.set("lon", String(p.lng));
       url.searchParams.set("zoom", "18");
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
-      if (!res.ok) {
-        // Nominatim refuses some User-Agents outright (403). Photon's reverse endpoint is
-        // the fallback before giving up and showing bare coordinates.
-        const viaPhoton = await photonReverse(p).catch(() => null);
-        if (viaPhoton) return viaPhoton;
-        throw new Error(`Nominatim ${res.status}`);
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) }).catch(() => null);
+      if (!res?.ok) {
+        // Nominatim refuses some User-Agents outright (403) or is unreachable. Photon, then
+        // Geopunt, before giving up and showing bare coordinates.
+        const fallback = (await photonReverse(p).catch(() => null)) ?? (await geopuntReverse(p).catch(() => null));
+        if (fallback) return fallback;
+        throw new Error(`Nominatim ${res?.status ?? "unreachable"}`);
       }
       const json = (await res.json()) as { display_name?: string; address?: Record<string, string> };
       const a = json.address ?? {};
@@ -98,18 +102,11 @@ export async function reverseGeocode(p: LatLng): Promise<string> {
 }
 
 async function photonReverse(p: LatLng): Promise<string | null> {
-  const url = new URL("/reverse", env.PHOTON_URL);
-  url.searchParams.set("lat", String(p.lat));
-  url.searchParams.set("lon", String(p.lng));
-  url.searchParams.set("lang", "en");
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
-  if (!res.ok) return null;
-  const json = (await res.json()) as { features?: Array<{ properties: Record<string, string | undefined> }> };
-  const f = json.features?.[0]?.properties;
-  if (!f) return null;
-  const street = [f.street ?? f.name, f.housenumber].filter(Boolean).join(" ");
-  const town = f.city ?? f.locality ?? f.county ?? "";
-  return [street, [f.postcode, town].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null;
+  return photonReverseLabel(await getJson(photonReverseUrl(env.PHOTON_URL, p), "Photon"));
+}
+
+async function geopuntReverse(p: LatLng): Promise<string | null> {
+  return geopuntReverseLabel(await getJson(geopuntReverseUrl(env.GEOPUNT_URL, p), "Geopunt"));
 }
 
 const RouteSchema = z.object({

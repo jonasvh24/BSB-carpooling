@@ -16,7 +16,11 @@ export async function POST(req: Request) {
   try {
     const hits = await geocode(q, site ?? undefined);
     return NextResponse.json(hits);
-  } catch {
-    return NextResponse.json([], { status: 200 });
+  } catch (err) {
+    // Status and error name only (for example "Photon 403", "TimeoutError"): the query is personal data.
+    console.warn(`[geo] search failed: ${(err as Error).name} ${(err as Error).message}`);
+    // 503, not an empty list: the form then asks Photon from the browser (photon-browser.ts),
+    // and says the search is down only if that fails too.
+    return NextResponse.json([], { status: 503 });
   }
 }

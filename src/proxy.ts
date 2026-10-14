@@ -14,6 +14,8 @@ export const proxy = auth((req) => {
     nonce,
     dev: process.env.NODE_ENV === "development",
     tileUrl: process.env.NEXT_PUBLIC_TILE_URL ?? "",
+    photonUrl: process.env.NEXT_PUBLIC_PHOTON_URL ?? "",
+    geopuntUrl: process.env.NEXT_PUBLIC_GEOPUNT_URL ?? "",
     https: (process.env.AUTH_URL ?? "").startsWith("https://"),
   });
   const requestHeaders = new Headers(req.headers);

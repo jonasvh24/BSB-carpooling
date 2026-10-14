@@ -10,6 +10,9 @@ export const getCurrentUser = cache(async () => {
   if (!id) return null;
   const user = await db.user.findUnique({ where: { id }, include: { org: true } });
   if (!user || user.status !== "ACTIVE") return null;
+  // A password reset or an administrator setting a password signs out every older session,
+  // so whoever had the account before the change loses it.
+  if (user.credentialsChangedAt && session.authAt < Math.floor(user.credentialsChangedAt.getTime() / 1000)) return null;
   return user;
 });
 
